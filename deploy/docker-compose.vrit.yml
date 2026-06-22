@@ -1,0 +1,151 @@
+# Vrit Tech — production deploy compose (PULL-based).
+# Lives on the VPS at ${DEPLOY_PATH} (e.g. /opt/plane). The CI workflow
+# (.github/workflows/deploy-vrit.yml) sets REGISTRY / IMAGE_PREFIX / APP_RELEASE
+# and runs `docker compose -f docker-compose.vrit.yml pull && up -d` over SSH.
+#
+# This is the deploy analog of the repo-root docker-compose.yml: same topology,
+# but services use `image:` (pulled from GHCR) instead of `build:`.
+#
+# Image tag: APP_RELEASE pins to a commit SHA in CI; defaults to the moving
+# `vrit` tag for manual `docker compose up` on the box.
+
+x-app-env: &app-env
+  env_file:
+    - .env
+
+x-backend: &backend
+  image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-backend:${APP_RELEASE:-vrit}
+  <<: *app-env
+  restart: always
+  depends_on:
+    - plane-db
+    - plane-redis
+    - plane-mq
+
+services:
+  web:
+    container_name: web
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-web:${APP_RELEASE:-vrit}
+    restart: always
+    depends_on:
+      - api
+
+  admin:
+    container_name: admin
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-admin:${APP_RELEASE:-vrit}
+    restart: always
+    depends_on:
+      - api
+      - web
+
+  space:
+    container_name: space
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-space:${APP_RELEASE:-vrit}
+    restart: always
+    depends_on:
+      - api
+      - web
+
+  api:
+    <<: *backend
+    container_name: api
+    command: ./bin/docker-entrypoint-api.sh
+
+  worker:
+    <<: *backend
+    container_name: bgworker
+    command: ./bin/docker-entrypoint-worker.sh
+    depends_on:
+      - api
+
+  beat-worker:
+    <<: *backend
+    container_name: beatworker
+    command: ./bin/docker-entrypoint-beat.sh
+    depends_on:
+      - api
+
+  migrator:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-backend:${APP_RELEASE:-vrit}
+    <<: *app-env
+    container_name: plane-migrator
+    restart: "no"
+    command: ./bin/docker-entrypoint-migrator.sh
+    depends_on:
+      - plane-db
+      - plane-redis
+
+  live:
+    container_name: plane-live
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-live:${APP_RELEASE:-vrit}
+    restart: always
+
+  plane-db:
+    container_name: plane-db
+    image: postgres:15.7-alpine
+    restart: always
+    command: postgres -c 'max_connections=1000'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data
+
+  plane-redis:
+    container_name: plane-redis
+    image: valkey/valkey:7.2.11-alpine
+    restart: always
+    volumes:
+      - redisdata:/data
+
+  plane-mq:
+    container_name: plane-mq
+    image: rabbitmq:3.13.6-management-alpine
+    restart: always
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  plane-minio:
+    container_name: plane-minio
+    image: minio/minio
+    restart: always
+    command: server /export --console-address ":9090"
+    volumes:
+      - uploads:/export
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+
+  proxy:
+    container_name: proxy
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-proxy:${APP_RELEASE:-vrit}
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - ${LISTEN_HTTP_PORT:-80}:80
+      - ${LISTEN_HTTPS_PORT:-443}:443
+    environment:
+      FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-5242880}
+      BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
+    depends_on:
+      - web
+      - api
+      - space
+      - admin
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  rabbitmq_data:
