@@ -24,10 +24,14 @@ import interVariableWoff2 from "@fontsource-variable/inter/files/inter-latin-wgh
 import "@fontsource/material-symbols-rounded";
 import "@fontsource/ibm-plex-mono";
 
-const APP_TITLE = "Plane Publish | Make your Plane boards public with one-click";
-const APP_DESCRIPTION = "Plane Publish is a customer feedback management tool built on top of plane.so";
+const APP_TITLE = "Vrit Tech"; /* VRIT BRANDING — was "Plane Publish | ..." */
+const APP_DESCRIPTION = "Publish your boards and roadmaps with Vrit Tech."; /* VRIT BRANDING */
 
 export const links: Route.LinksFunction = () => [
+  /* >>> VRIT BRANDING (see BRANDING.md) */
+  { rel: "icon", type: "image/png", href: "/vrit-fav.png" },
+  { rel: "apple-touch-icon", href: "/vrit-fav.png" },
+  /* <<< VRIT BRANDING */
   { rel: "apple-touch-icon", sizes: "180x180", href: appleTouchIcon },
   { rel: "icon", type: "image/png", sizes: "32x32", href: favicon32 },
   { rel: "icon", type: "image/png", sizes: "16x16", href: favicon16 },

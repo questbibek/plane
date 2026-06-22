@@ -33,9 +33,13 @@ import interVariableWoff2 from "@fontsource-variable/inter/files/inter-latin-wgh
 import "@fontsource/material-symbols-rounded";
 import "@fontsource/ibm-plex-mono";
 
-const APP_TITLE = "Plane | Simple, extensible, open-source project management tool.";
+const APP_TITLE = "Vrit Tech"; /* VRIT BRANDING — was "Plane | Simple, extensible, ..." */
 
 export const links: LinksFunction = () => [
+  /* >>> VRIT BRANDING (see BRANDING.md) */
+  { rel: "icon", type: "image/png", href: "/vrit-fav.png" },
+  { rel: "apple-touch-icon", href: "/vrit-fav.png" },
+  /* <<< VRIT BRANDING */
   { rel: "icon", type: "image/png", sizes: "32x32", href: favicon32 },
   { rel: "icon", type: "image/png", sizes: "16x16", href: favicon16 },
   { rel: "shortcut icon", href: faviconIco },
@@ -64,7 +68,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#fff" />
         {/* Meta info for PWA */}
-        <meta name="application-name" content="Plane" />
+        <meta name="application-name" content="Vrit Tech" /> {/* VRIT BRANDING */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
@@ -106,7 +110,7 @@ export const meta: Route.MetaFunction = () => [
   { property: "og:image", content: ogImage },
   { property: "og:image:width", content: "1200" },
   { property: "og:image:height", content: "630" },
-  { property: "og:image:alt", content: "Plane - Modern project management" },
+  { property: "og:image:alt", content: "Vrit Tech - Modern project management" }, /* VRIT BRANDING */
   {
     name: "keywords",
     content:
@@ -117,7 +121,7 @@ export const meta: Route.MetaFunction = () => [
   { name: "twitter:image", content: ogImage },
   { name: "twitter:image:width", content: "1200" },
   { name: "twitter:image:height", content: "630" },
-  { name: "twitter:image:alt", content: "Plane - Modern project management" },
+  { name: "twitter:image:alt", content: "Vrit Tech - Modern project management" }, /* VRIT BRANDING */
 ];
 
 export default function Root() {
