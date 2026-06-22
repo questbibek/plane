@@ -1,5 +1,30 @@
 {
   "project_settings": {
+    "custom_fields": {
+      "title": "Custom fields",
+      "description": "Define custom fields to capture extra information on work items in this project.",
+      "add_field": "Add field",
+      "empty_state": "No custom fields yet. Add your first field to get started.",
+      "name": "Name",
+      "field_name_placeholder": "Field name",
+      "field_description_placeholder": "Description (optional)",
+      "type": "Type",
+      "required": "Required",
+      "options": "Options",
+      "add_option": "Add option",
+      "option_placeholder": "Option label",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete_confirm": "Are you sure you want to delete this field? All values stored for it will be removed.",
+      "toast": {
+        "create_success": "Custom field created",
+        "create_error": "Custom field could not be created",
+        "update_success": "Custom field updated",
+        "update_error": "Custom field could not be updated",
+        "delete_success": "Custom field deleted",
+        "delete_error": "Custom field could not be deleted"
+      }
+    },
     "general": {
       "enter_project_id": "Enter project ID",
       "please_select_a_timezone": "Please select a timezone",
