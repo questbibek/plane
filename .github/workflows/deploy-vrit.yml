@@ -63,27 +63,41 @@ jobs:
       contents: read
       packages: read
     steps:
-      - name: SSH deploy
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            set -e
-            cd "${{ vars.DEPLOY_PATH || '/opt/plane' }}"
+      - uses: actions/checkout@v4
 
-            # Authenticate to GHCR for this pull (job-scoped token).
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+      # Native SSH only — no third-party action.
+      - name: Deploy over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/plane' }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          APP_RELEASE: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-            # Pin this deploy to the immutable commit tag.
-            export REGISTRY="${{ env.REGISTRY }}"
-            export IMAGE_PREFIX="${{ env.IMAGE_PREFIX }}"
-            export APP_RELEASE="${{ github.sha }}"
+          SSHO="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -p $SSH_PORT"
 
-            docker compose -f docker-compose.vrit.yml pull
-            # Run DB migrations to completion before swapping the app.
-            docker compose -f docker-compose.vrit.yml run --rm migrator
-            docker compose -f docker-compose.vrit.yml up -d --remove-orphans
-            docker image prune -f
+          # Keep the VPS compose in sync with the repo on every deploy.
+          ssh $SSHO "$SSH_USER@$SSH_HOST" "mkdir -p $DEPLOY_PATH"
+          scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o StrictHostKeyChecking=accept-new \
+            deploy/docker-compose.vrit.yml "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/docker-compose.vrit.yml"
+
+          # Run remotely: GHCR login, pull pinned images, migrate, restart.
+          ssh $SSHO "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH \
+             && echo '$GHCR_TOKEN' | docker login $REGISTRY -u '$GHCR_USER' --password-stdin \
+             && export REGISTRY='$REGISTRY' IMAGE_PREFIX='$IMAGE_PREFIX' APP_RELEASE='$APP_RELEASE' \
+             && docker compose -f docker-compose.vrit.yml pull \
+             && docker compose -f docker-compose.vrit.yml run --rm migrator \
+             && docker compose -f docker-compose.vrit.yml up -d --remove-orphans \
+             && docker image prune -f"
