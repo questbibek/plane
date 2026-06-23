@@ -115,16 +115,7 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
-  plane-minio:
-    container_name: plane-minio
-    image: minio/minio
-    restart: always
-    command: server /export --console-address ":9090"
-    volumes:
-      - uploads:/export
-    environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+  # File storage is external (Cloudflare R2) — no local MinIO service.
 
   proxy:
     container_name: proxy
@@ -137,7 +128,9 @@ services:
       - ${LISTEN_HTTPS_PORT:-443}:443
     environment:
       FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-5242880}
-      BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
+      # Sentinel, not the real bucket: the legacy MinIO route must never match a
+      # real app path. R2 files are served from the R2 domain via presigned URLs.
+      BUCKET_NAME: ${PROXY_BUCKET_ROUTE:-__minio_disabled__}
     depends_on:
       - web
       - api
@@ -147,5 +140,4 @@ services:
 volumes:
   pgdata:
   redisdata:
-  uploads:
   rabbitmq_data:
