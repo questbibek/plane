@@ -23,17 +23,13 @@ export type TFileMetaData = TFileMetaDataLite & TFileEntityInfo;
 export type TFileSignedURLResponse = {
   asset_id: string;
   asset_url: string;
+  // Presigned PUT upload (Cloudflare R2 does not support S3 POST Object).
+  // The file is sent as the raw request body via PUT to `url`, and `headers`
+  // must be sent verbatim — a signed Content-Type is part of the signature.
   upload_data: {
     url: string;
-    fields: {
-      "Content-Type": string;
-      key: string;
-      "x-amz-algorithm": string;
-      "x-amz-credential": string;
-      "x-amz-date": string;
-      policy: string;
-      "x-amz-signature": string;
-    };
+    method: string;
+    headers: Record<string, string>;
   };
 };
 

@@ -64,12 +64,9 @@ class TestS3StorageSignedURLExpiration:
     @patch("plane.settings.storage.boto3")
     def test_generate_presigned_post_uses_default_expiration(self, mock_boto3):
         """Test that generate_presigned_post uses the configured default expiration"""
-        # Mock the boto3 client and its response
+        # Mock the boto3 client and its response (presigned PUT URL)
         mock_s3_client = Mock()
-        mock_s3_client.generate_presigned_post.return_value = {
-            "url": "https://test-url.com",
-            "fields": {},
-        }
+        mock_s3_client.generate_presigned_url.return_value = "https://test-url.com"
         mock_boto3.client.return_value = mock_s3_client
 
         # Create S3Storage instance
@@ -79,9 +76,10 @@ class TestS3StorageSignedURLExpiration:
         storage.generate_presigned_post("test-object", "image/png", 1024)
 
         # Assert that the boto3 method was called with the default expiration (3600)
-        mock_s3_client.generate_presigned_post.assert_called_once()
-        call_kwargs = mock_s3_client.generate_presigned_post.call_args[1]
+        mock_s3_client.generate_presigned_url.assert_called_once()
+        call_kwargs = mock_s3_client.generate_presigned_url.call_args[1]
         assert call_kwargs["ExpiresIn"] == 3600
+        assert call_kwargs["HttpMethod"] == "PUT"
 
     @patch.dict(
         os.environ,
@@ -97,12 +95,9 @@ class TestS3StorageSignedURLExpiration:
     @patch("plane.settings.storage.boto3")
     def test_generate_presigned_post_uses_custom_expiration(self, mock_boto3):
         """Test that generate_presigned_post uses custom expiration from env variable"""
-        # Mock the boto3 client and its response
+        # Mock the boto3 client and its response (presigned PUT URL)
         mock_s3_client = Mock()
-        mock_s3_client.generate_presigned_post.return_value = {
-            "url": "https://test-url.com",
-            "fields": {},
-        }
+        mock_s3_client.generate_presigned_url.return_value = "https://test-url.com"
         mock_boto3.client.return_value = mock_s3_client
 
         # Create S3Storage instance with SIGNED_URL_EXPIRATION=60
@@ -112,9 +107,10 @@ class TestS3StorageSignedURLExpiration:
         storage.generate_presigned_post("test-object", "image/png", 1024)
 
         # Assert that the boto3 method was called with custom expiration (60)
-        mock_s3_client.generate_presigned_post.assert_called_once()
-        call_kwargs = mock_s3_client.generate_presigned_post.call_args[1]
+        mock_s3_client.generate_presigned_url.assert_called_once()
+        call_kwargs = mock_s3_client.generate_presigned_url.call_args[1]
         assert call_kwargs["ExpiresIn"] == 60
+        assert call_kwargs["HttpMethod"] == "PUT"
 
     @patch.dict(
         os.environ,

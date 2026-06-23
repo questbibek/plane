@@ -10,6 +10,15 @@ import { fileTypeFromBuffer } from "file-type";
 import type { TFileMetaDataLite, TFileSignedURLResponse } from "@plane/types";
 import { DANGEROUS_EXTENSIONS } from "@plane/constants";
 
+// Payload for a presigned PUT upload: the raw file as the request body plus the
+// exact headers that were signed and must be replayed on the request. Defined
+// here (not in @plane/types) because the DOM `File` type is unavailable in the
+// node-only types package.
+export type TFileUploadRequest = {
+  file: File;
+  headers: Record<string, string>;
+};
+
 /**
  * @description Filename validation - checks for double extensions and dangerous patterns
  * @param {string} filename
@@ -50,17 +59,19 @@ const validateFilename = (filename: string): string | null => {
 };
 
 /**
- * @description from the provided signed URL response, generate a payload to be used to upload the file
+ * @description from the provided signed URL response, generate the payload used to PUT the file
+ * to storage. The file becomes the raw request body and the signed headers are replayed as-is.
  * @param {TFileSignedURLResponse} signedURLResponse
  * @param {File} file
- * @returns {FormData} file upload request payload
+ * @returns {TFileUploadRequest} file upload request payload
  */
-export const generateFileUploadPayload = (signedURLResponse: TFileSignedURLResponse, file: File): FormData => {
-  const formData = new FormData();
-  Object.entries(signedURLResponse.upload_data.fields).forEach(([key, value]) => formData.append(key, value));
-  formData.append("file", file);
-  return formData;
-};
+export const generateFileUploadPayload = (
+  signedURLResponse: TFileSignedURLResponse,
+  file: File
+): TFileUploadRequest => ({
+  file,
+  headers: signedURLResponse.upload_data.headers ?? {},
+});
 
 /**
  * @description Detect MIME type from file signature using file-type library

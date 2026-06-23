@@ -63,40 +63,46 @@ class S3Storage(S3Boto3Storage):
             )
 
     def generate_presigned_post(self, object_name, file_type, file_size, expiration=None):
-        """Generate a presigned URL to upload an S3 object"""
+        """Generate a presigned URL to upload an S3 object.
+
+        Uses a presigned PUT (``PutObject``) rather than a browser form POST
+        (``PostObject``). Cloudflare R2 does not implement the S3 POST Object
+        operation and returns ``501 Not Implemented`` for it, whereas
+        ``PutObject`` is supported. The client must PUT the raw file body and
+        send exactly the headers returned here — when a ``Content-Type`` is
+        signed it becomes part of the SigV4 signature and must match.
+
+        ``file_size`` is kept for backwards compatibility but is not enforced by
+        a presigned PUT (the old POST policy used a ``content-length-range``
+        condition); callers validate the declared size before requesting the
+        URL. The return shape mirrors the old method's ``upload_data`` contract:
+        ``{"url", "method", "headers"}`` instead of ``{"url", "fields"}``.
+        """
         if expiration is None:
             expiration = self.signed_url_expiration
-        fields = {"Content-Type": file_type}
 
-        conditions = [
-            {"bucket": self.aws_storage_bucket_name},
-            ["content-length-range", 1, file_size],
-            {"Content-Type": file_type},
-        ]
+        params = {"Bucket": self.aws_storage_bucket_name, "Key": object_name}
+        headers = {}
+        # Only sign the Content-Type when we actually have one; signing an empty
+        # value would force the client to send an empty Content-Type header.
+        if file_type:
+            params["ContentType"] = file_type
+            headers["Content-Type"] = file_type
 
-        # Add condition for the object name (key)
-        if object_name.startswith("${filename}"):
-            conditions.append(["starts-with", "$key", object_name[: -len("${filename}")]])
-        else:
-            fields["key"] = object_name
-            conditions.append({"key": object_name})
-
-        # Generate the presigned POST URL
+        # Generate the presigned PUT URL
         try:
-            # Generate a presigned URL for the S3 object
-            response = self.s3_client.generate_presigned_post(
-                Bucket=self.aws_storage_bucket_name,
-                Key=object_name,
-                Fields=fields,
-                Conditions=conditions,
+            url = self.s3_client.generate_presigned_url(
+                "put_object",
+                Params=params,
                 ExpiresIn=expiration,
+                HttpMethod="PUT",
             )
         # Handle errors
         except ClientError as e:
-            print(f"Error generating presigned POST URL: {e}")
+            log_exception(e)
             return None
 
-        return response
+        return {"url": url, "method": "PUT", "headers": headers}
 
     def _get_content_disposition(self, disposition, filename=None):
         """Helper method to generate Content-Disposition header value"""

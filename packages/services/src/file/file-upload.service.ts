@@ -4,9 +4,11 @@
  * See the LICENSE file for details.
  */
 
-import axios from "axios";
+import { isCancel } from "axios";
 // api service
 import { APIService } from "../api.service";
+// helpers
+import type { TFileUploadRequest } from "./helper";
 
 /**
  * Service class for handling file upload operations
@@ -14,31 +16,31 @@ import { APIService } from "../api.service";
  * @extends {APIService}
  */
 export class FileUploadService extends APIService {
-  private cancelSource: any;
+  private abortController: AbortController | undefined;
 
   constructor() {
     super("");
   }
 
   /**
-   * Uploads a file to the specified signed URL
-   * @param {string} url - The URL to upload the file to
-   * @param {FormData} data - The form data to upload
+   * Uploads a file to the specified presigned PUT URL
+   * @param {string} url - The presigned URL to upload the file to
+   * @param {TFileUploadRequest} data - The raw file and the signed headers to replay
    * @returns {Promise<void>} Promise resolving to void
    * @throws {Error} If the request fails
    */
-  async uploadFile(url: string, data: FormData): Promise<void> {
-    this.cancelSource = axios.CancelToken.source();
-    return this.post(url, data, {
+  async uploadFile(url: string, data: TFileUploadRequest): Promise<void> {
+    this.abortController = new AbortController();
+    return this.put(url, data.file, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        ...data.headers,
       },
-      cancelToken: this.cancelSource.token,
+      signal: this.abortController.signal,
       withCredentials: false,
     })
       .then((response) => response?.data)
       .catch((error) => {
-        if (axios.isCancel(error)) {
+        if (isCancel(error)) {
           console.log(error.message);
         } else {
           throw error?.response?.data;
@@ -50,6 +52,6 @@ export class FileUploadService extends APIService {
    * Cancels the upload
    */
   cancelUpload() {
-    this.cancelSource.cancel("Upload canceled");
+    this.abortController?.abort();
   }
 }
