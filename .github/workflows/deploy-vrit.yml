@@ -28,9 +28,9 @@ jobs:
           - { name: web,     context: ".",          file: ./apps/web/Dockerfile.web }
           - { name: admin,   context: ".",          file: ./apps/admin/Dockerfile.admin }
           - { name: space,   context: ".",          file: ./apps/space/Dockerfile.space }
-          - { name: backend, context: "./apps/api", file: Dockerfile.api }
+          - { name: backend, context: "./apps/api", file: ./apps/api/Dockerfile.api }
           - { name: live,    context: ".",          file: ./apps/live/Dockerfile.live }
-          - { name: proxy,   context: "./apps/proxy", file: Dockerfile.ce }
+          - { name: proxy,   context: "./apps/proxy", file: ./apps/proxy/Dockerfile.ce }
     steps:
       - uses: actions/checkout@v4
 
