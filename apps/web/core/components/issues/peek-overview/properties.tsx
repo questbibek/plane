@@ -30,6 +30,7 @@ import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
+import { CustomFieldValuesSection } from "@/components/issues/custom-fields";
 // helpers
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useMember } from "@/hooks/store/use-member";
@@ -267,6 +268,13 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
           workspaceSlug={workspaceSlug}
           isEditable={!disabled}
           isPeekView
+        />
+
+        <CustomFieldValuesSection
+          workspaceSlug={workspaceSlug}
+          projectId={projectId}
+          issueId={issueId}
+          isEditable={!disabled}
         />
       </div>
     </div>
