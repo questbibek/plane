@@ -17,22 +17,22 @@ push vrit ──▶ GitHub Actions ──▶ build 6 images ──▶ ghcr.io/<o
 
 **Secrets** — `Settings → Secrets and variables → Actions → Secrets`:
 
-| Secret | Value |
-|---|---|
-| `SSH_HOST` | `5.223.91.163` |
-| `SSH_USER` | `root` |
+| Secret            | Value                                     |
+| ----------------- | ----------------------------------------- |
+| `SSH_HOST`        | `5.223.91.163`                            |
+| `SSH_USER`        | `root`                                    |
 | `SSH_PRIVATE_KEY` | private key of the deploy keypair (below) |
-| `SSH_PORT` | `22` (only if non-default) |
+| `SSH_PORT`        | `22` (only if non-default)                |
 
 No registry secret is needed: pushing to GHCR uses the built-in `GITHUB_TOKEN`.
 
 **Variables** (optional — sensible defaults baked in):
 
-| Variable | Default | |
-|---|---|---|
-| `REGISTRY` | `ghcr.io` | |
-| `IMAGE_PREFIX` | repo owner | your GHCR namespace, lowercase |
-| `DEPLOY_PATH` | `/opt/plane` | compose dir on the VPS |
+| Variable       | Default      |                                |
+| -------------- | ------------ | ------------------------------ |
+| `REGISTRY`     | `ghcr.io`    |                                |
+| `IMAGE_PREFIX` | repo owner   | your GHCR namespace, lowercase |
+| `DEPLOY_PATH`  | `/opt/plane` | compose dir on the VPS         |
 
 ### Deploy SSH key
 
@@ -70,6 +70,7 @@ chmod 600 .env
 
 CI logs in with a job-scoped token for each deploy, so normal pushes "just work".
 For the VPS to re-pull after a **reboot**, do one of:
+
 - make the GHCR packages **public** (simplest — no creds on the box), or
 - `docker login ghcr.io -u <user> -p <classic PAT with read:packages>` once on the VPS.
 
@@ -92,6 +93,50 @@ docker compose -f docker-compose.vrit.yml logs -f api      # migrations clean, n
 - [ ] `/god-mode` (admin) and `/spaces` (space) render
 - [ ] sign-up works; custom-fields feature works end to end
 
+## Database backups (off-site → R2)
+
+The `backup` sidecar ([`deploy/backup/r2-backup.sh`](backup/r2-backup.sh)) dumps
+Postgres and uploads it to **the same R2 bucket** under `BACKUP_PREFIX/`
+(default `planedbbackup/`), reusing the app's `AWS_*` credentials. It's a no-op
+unless `BACKUP_ENABLED=true`.
+
+- **Schedule** enforced by bucket contents, not a timer: it only uploads if the
+  newest object is older than `BACKUP_INTERVAL_HOURS` (default 12h → twice
+  daily), with a 30-min jitter tolerance — so container/stack restarts can't
+  spam backups.
+- **Retention** is strictly count-based: keep the newest `BACKUP_KEEP_COUNT`
+  (default 30 ≈ 15 days at 12h); the oldest are pruned only when over the cap.
+  Pruning runs every cycle even if an upload is skipped or fails.
+- Filenames: `backup-{UTC-timestamp}.sql.gz`.
+
+Verify it's running:
+
+```bash
+cd /opt/plane
+docker compose -f docker-compose.vrit.yml logs -f backup    # look for "upload complete"
+# list what's in R2:
+aws --endpoint-url "$AWS_S3_ENDPOINT_URL" s3 ls "s3://$AWS_S3_BUCKET_NAME/planedbbackup/"
+```
+
+### Restore from a backup
+
+```bash
+cd /opt/plane
+# 1. pick a backup and pull it down
+aws --endpoint-url "$AWS_S3_ENDPOINT_URL" \
+  s3 cp "s3://$AWS_S3_BUCKET_NAME/planedbbackup/backup-<timestamp>.sql.gz" ./restore.sql.gz
+
+# 2. restore into the running DB (drops & recreates objects from the dump)
+gunzip -c ./restore.sql.gz | \
+  docker compose -f docker-compose.vrit.yml exec -T plane-db \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
+> For a clean restore, stop the app services first
+> (`docker compose -f docker-compose.vrit.yml stop api worker beat-worker`), restore,
+> then start them again. The dump is `--no-owner --no-privileges` plain SQL, so it
+> restores with `psql` (no `pg_restore` needed).
+
 ## Rollback
 
 ```bash
@@ -99,5 +144,6 @@ cd /opt/plane
 export APP_RELEASE=<previous-good-sha>      # immutable per-commit tag
 docker compose -f docker-compose.vrit.yml pull && docker compose -f docker-compose.vrit.yml up -d
 ```
+
 Postgres data is untouched by image swaps. Restore from a dump only if a
 migration corrupted data (additive migrations shouldn't).

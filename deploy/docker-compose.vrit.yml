@@ -117,6 +117,17 @@ services:
 
   # File storage is external (Cloudflare R2) — no local MinIO service.
 
+  # Off-site DB backups to R2 (pg_dump → gzip → upload). No-op unless
+  # BACKUP_ENABLED=true. See deploy/backup/r2-backup.sh.
+  backup:
+    container_name: plane-backup
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-backup:${APP_RELEASE:-vrit}
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - plane-db
+
   proxy:
     container_name: proxy
     image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-proxy:${APP_RELEASE:-vrit}

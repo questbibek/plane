@@ -31,6 +31,7 @@ jobs:
           - { name: backend, context: "./apps/api", file: ./apps/api/Dockerfile.api }
           - { name: live,    context: ".",          file: ./apps/live/Dockerfile.live }
           - { name: proxy,   context: "./apps/proxy", file: ./apps/proxy/Dockerfile.ce }
+          - { name: backup,  context: "./deploy/backup", file: ./deploy/backup/Dockerfile }
     steps:
       - uses: actions/checkout@v4
 
