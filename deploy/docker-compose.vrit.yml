@@ -79,6 +79,10 @@ services:
     container_name: plane-live
     image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:?set IMAGE_PREFIX}/plane-live:${APP_RELEASE:-vrit}
     restart: always
+    env_file:
+      - .env
+    depends_on:
+      - api
 
   plane-db:
     container_name: plane-db
