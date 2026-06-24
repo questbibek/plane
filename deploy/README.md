@@ -96,9 +96,9 @@ docker compose -f docker-compose.vrit.yml logs -f api      # migrations clean, n
 ## Database backups (off-site → R2)
 
 The `backup` sidecar ([`deploy/backup/r2-backup.sh`](backup/r2-backup.sh)) dumps
-Postgres and uploads it to **the same R2 bucket** under `BACKUP_PREFIX/`
-(default `planedbbackup/`), reusing the app's `AWS_*` credentials. It's a no-op
-unless `BACKUP_ENABLED=true`.
+Postgres and uploads it to a **dedicated R2 bucket** (`BACKUP_BUCKET`, default
+`planedbbackup` — separate from the app's `AWS_S3_BUCKET_NAME`), reusing the same
+R2 endpoint + credentials. It's a no-op unless `BACKUP_ENABLED=true`.
 
 - **Schedule** enforced by bucket contents, not a timer: it only uploads if the
   newest object is older than `BACKUP_INTERVAL_HOURS` (default 12h → twice
@@ -114,8 +114,8 @@ Verify it's running:
 ```bash
 cd /opt/plane
 docker compose -f docker-compose.vrit.yml logs -f backup    # look for "upload complete"
-# list what's in R2:
-aws --endpoint-url "$AWS_S3_ENDPOINT_URL" s3 ls "s3://$AWS_S3_BUCKET_NAME/planedbbackup/"
+# list what's in the backup bucket:
+aws --endpoint-url "$AWS_S3_ENDPOINT_URL" s3 ls "s3://planedbbackup/"
 ```
 
 ### Restore from a backup
@@ -124,7 +124,7 @@ aws --endpoint-url "$AWS_S3_ENDPOINT_URL" s3 ls "s3://$AWS_S3_BUCKET_NAME/planed
 cd /opt/plane
 # 1. pick a backup and pull it down
 aws --endpoint-url "$AWS_S3_ENDPOINT_URL" \
-  s3 cp "s3://$AWS_S3_BUCKET_NAME/planedbbackup/backup-<timestamp>.sql.gz" ./restore.sql.gz
+  s3 cp "s3://planedbbackup/backup-<timestamp>.sql.gz" ./restore.sql.gz
 
 # 2. restore into the running DB (drops & recreates objects from the dump)
 gunzip -c ./restore.sql.gz | \

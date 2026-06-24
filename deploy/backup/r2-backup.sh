@@ -23,8 +23,11 @@ set -uo pipefail
 : "${BACKUP_INTERVAL_HOURS:=12}"
 : "${BACKUP_KEEP_COUNT:=30}"
 : "${BACKUP_RUN_ON_START:=true}"
-: "${BACKUP_PREFIX:=planedbbackup}"
+: "${BACKUP_PREFIX:=}"                 # optional sub-path; empty = bucket root
 : "${BACKUP_JITTER_MINUTES:=30}"
+
+# Dedicated backup bucket (separate from the app's object-storage bucket).
+: "${BACKUP_BUCKET:?BACKUP_BUCKET is required}"
 
 # Database (shared with the app's .env)
 : "${POSTGRES_HOST:=plane-db}"
@@ -33,19 +36,21 @@ set -uo pipefail
 : "${POSTGRES_DB:?POSTGRES_DB is required}"
 : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
 
-# R2 / S3 (same credentials as the app's object storage)
+# R2 / S3 (same endpoint + credentials as the app's object storage)
 : "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}"
 : "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}"
 : "${AWS_S3_ENDPOINT_URL:?AWS_S3_ENDPOINT_URL is required}"
-: "${AWS_S3_BUCKET_NAME:?AWS_S3_BUCKET_NAME is required}"
 : "${AWS_REGION:=auto}"
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
 # aws-cli reads region from AWS_DEFAULT_REGION; R2 expects "auto".
 export AWS_DEFAULT_REGION="$AWS_REGION"
 
-readonly BUCKET="$AWS_S3_BUCKET_NAME"
-readonly PREFIX="${BACKUP_PREFIX%/}"                 # strip any trailing slash
+readonly BUCKET="$BACKUP_BUCKET"
+# Object key prefix within the bucket; empty (the default) means bucket root.
+PREFIX="${BACKUP_PREFIX%/}"
+if [ -n "$PREFIX" ]; then KEY_BASE="${PREFIX}/"; else KEY_BASE=""; fi
+readonly PREFIX KEY_BASE
 readonly INTERVAL_SECS=$(( BACKUP_INTERVAL_HOURS * 3600 ))
 readonly JITTER_SECS=$(( BACKUP_JITTER_MINUTES * 60 ))
 # Single source of truth for the aws-cli invocation against R2.
@@ -56,7 +61,7 @@ log() { echo "[r2-backup] $(date -u +%FT%TZ) $*"; }
 # Epoch (UTC) of the newest object under the prefix; empty if none exist.
 newest_backup_epoch() {
   local lm
-  lm=$(aws_s3 s3api list-objects-v2 --bucket "$BUCKET" --prefix "${PREFIX}/" \
+  lm=$(aws_s3 s3api list-objects-v2 --bucket "$BUCKET" --prefix "${KEY_BASE}" \
         --query 'sort_by(Contents,&LastModified)[-1].LastModified' --output text 2>/dev/null)
   [ "$lm" = "None" ] || [ -z "$lm" ] && return 0
   date -u -d "$lm" +%s 2>/dev/null
@@ -76,7 +81,7 @@ has_recent_backup() {
 do_backup() {
   local ts key tmp
   ts=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-  key="${PREFIX}/backup-${ts}.sql.gz"
+  key="${KEY_BASE}backup-${ts}.sql.gz"
   tmp=$(mktemp "/tmp/plane-backup.XXXXXX.sql.gz")
 
   log "dumping ${POSTGRES_DB}@${POSTGRES_HOST} -> s3://${BUCKET}/${key}"
@@ -100,7 +105,7 @@ do_backup() {
 # Delete everything except the newest BACKUP_KEEP_COUNT objects under the prefix.
 prune() {
   local keys
-  keys=$(aws_s3 s3api list-objects-v2 --bucket "$BUCKET" --prefix "${PREFIX}/" \
+  keys=$(aws_s3 s3api list-objects-v2 --bucket "$BUCKET" --prefix "${KEY_BASE}" \
           --query "sort_by(Contents,&LastModified)[:-${BACKUP_KEEP_COUNT}].Key" \
           --output text 2>/dev/null)
   if [ -z "$keys" ] || [ "$keys" = "None" ]; then
@@ -129,7 +134,7 @@ main() {
     while true; do sleep 3600; done
   fi
 
-  log "enabled: interval=${BACKUP_INTERVAL_HOURS}h keep=${BACKUP_KEEP_COUNT} prefix=${PREFIX}/ bucket=${BUCKET}"
+  log "enabled: interval=${BACKUP_INTERVAL_HOURS}h keep=${BACKUP_KEEP_COUNT} dest=s3://${BUCKET}/${KEY_BASE}"
 
   if [ "$BACKUP_RUN_ON_START" = "true" ]; then
     sleep 60                       # let the DB settle after a stack restart
