@@ -1,8 +1,8 @@
 name: Build & Deploy (Vrit)
 
 # Vrit Tech fork CI/CD — NOT an upstream makeplane workflow.
-# On push to `vrit`: build the 6 app images, push to GHCR, then SSH into the
-# VPS and pull + migrate + restart. See deploy/README.md.
+# On push to `vrit`: build the 6 app images + backup sidecar, push to GHCR, then
+# SSH into the VPS and pull + migrate + restart. See deploy/README.md.
 
 on:
   push:

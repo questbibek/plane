@@ -2,11 +2,11 @@
 
 SSH-based CI/CD, GitHub-only. On push to `vrit`,
 [`.github/workflows/deploy-vrit.yml`](../.github/workflows/deploy-vrit.yml)
-builds the 6 app images, pushes them to **GHCR**, then SSHes into the VPS and
-runs `docker compose pull → migrate → up -d`.
+builds the 6 app images + a backup sidecar, pushes them to **GHCR**, then SSHes
+into the VPS and runs `docker compose pull → migrate → up -d`.
 
 ```
-push vrit ──▶ GitHub Actions ──▶ build 6 images ──▶ ghcr.io/<owner>/plane-*
+push vrit ──▶ GitHub Actions ──▶ build 7 images ──▶ ghcr.io/<owner>/plane-*
                                                           │
                           SSH root@5.223.91.163 ◀─────────┘
                           docker compose -f docker-compose.vrit.yml
