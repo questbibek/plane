@@ -25,7 +25,9 @@
 
 {
 	email {$CERT_EMAIL}
-	acme_ca {$CERT_ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+	# No acme_ca pin: Caddy's default issuer chain is Let's Encrypt → ZeroSSL.
+	# If LE rate-limits (or is down), Caddy automatically falls back to ZeroSSL
+	# (separate limits), so a single CA's limit can't take the whole site offline.
 	{$CERT_ACME_DNS}
 	servers {
 		max_header_size 25MB
