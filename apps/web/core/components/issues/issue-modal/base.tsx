@@ -16,6 +16,7 @@ import { EIssuesStoreType } from "@plane/types";
 import { EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
 // hooks
 import { useIssueModal } from "@/hooks/context/use-issue-modal";
+import { useCustomField } from "@/hooks/store/use-custom-field";
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
@@ -76,6 +77,7 @@ export const CreateUpdateIssueModalBase = observer(function CreateUpdateIssueMod
   const { issues: draftIssues } = useIssues(EIssuesStoreType.WORKSPACE_DRAFT);
   const { fetchIssue } = useIssueDetail();
   const { allowedProjectIds, handleCreateUpdatePropertyValues, handleCreateSubWorkItem } = useIssueModal();
+  const { flushPendingCreateValues } = useCustomField();
   const { getProjectByIdentifier } = useProject();
   // current store details
   const { createIssue, updateIssue } = useIssuesActions(storeType);
@@ -231,6 +233,9 @@ export const CreateUpdateIssueModalBase = observer(function CreateUpdateIssueMod
           projectId: response.project_id,
           parentId: response.id,
         });
+
+        // persist custom field values entered in the create modal
+        await flushPendingCreateValues(workspaceSlug.toString(), response.project_id, response.id);
       }
 
       setToast({

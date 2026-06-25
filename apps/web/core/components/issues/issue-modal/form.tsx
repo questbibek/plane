@@ -27,6 +27,7 @@ import {
   getTabIndex,
 } from "@plane/utils";
 // components
+import { CustomFieldCreateSection, CustomFieldValuesSection } from "@/components/issues/custom-fields";
 import {
   IssueDefaultProperties,
   IssueDescriptionEditor,
@@ -485,6 +486,22 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
                 projectId={projectId}
                 workspaceSlug={workspaceSlug?.toString()}
               />
+              {projectId &&
+                workspaceSlug &&
+                (data?.id ? (
+                  <div className="px-5">
+                    <CustomFieldValuesSection
+                      workspaceSlug={workspaceSlug.toString()}
+                      projectId={projectId}
+                      issueId={data.id}
+                      isEditable={!isDisabled}
+                    />
+                  </div>
+                ) : (
+                  <div className="px-5">
+                    <CustomFieldCreateSection workspaceSlug={workspaceSlug.toString()} projectId={projectId} />
+                  </div>
+                ))}
             </div>
             <div
               className={cn(

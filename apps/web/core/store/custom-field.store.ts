@@ -8,7 +8,7 @@ import { set, sortBy, unset } from "lodash-es";
 import { action, computed, makeObservable, observable, runInAction } from "mobx";
 import { computedFn } from "mobx-utils";
 // types
-import type { ICustomField, ICustomFieldValue } from "@plane/types";
+import type { ICustomField, ICustomFieldValue, TCustomFieldValueData } from "@plane/types";
 // services
 import { CustomFieldService } from "@/services/custom-field.service";
 // store
@@ -21,6 +21,8 @@ export interface ICustomFieldStore {
   valueMap: Record<string, Record<string, ICustomFieldValue>>;
   fetchedFieldsMap: Record<string, boolean>;
   fetchedValuesMap: Record<string, boolean>;
+  // values entered in the create-work-item modal, before an issue id exists
+  pendingCreateValues: Record<string, TCustomFieldValueData>;
   // computed
   projectCustomFields: ICustomField[] | undefined;
   // computed actions
@@ -28,6 +30,10 @@ export interface ICustomFieldStore {
   getCustomFieldById: (fieldId: string) => ICustomField | undefined;
   getIssueCustomFieldValues: (issueId: string) => Record<string, ICustomFieldValue> | undefined;
   getIssueCustomFieldValue: (issueId: string, fieldId: string) => ICustomFieldValue | undefined;
+  // pending (create-mode) value actions
+  setPendingCreateValue: (fieldId: string, value: TCustomFieldValueData) => void;
+  clearPendingCreateValues: () => void;
+  flushPendingCreateValues: (workspaceSlug: string, projectId: string, issueId: string) => Promise<void>;
   // field definition actions
   fetchProjectCustomFields: (workspaceSlug: string, projectId: string) => Promise<ICustomField[]>;
   createCustomField: (
@@ -69,6 +75,7 @@ export class CustomFieldStore implements ICustomFieldStore {
   valueMap: Record<string, Record<string, ICustomFieldValue>> = {};
   fetchedFieldsMap: Record<string, boolean> = {};
   fetchedValuesMap: Record<string, boolean> = {};
+  pendingCreateValues: Record<string, TCustomFieldValueData> = {};
   // root store
   rootStore;
   // services
@@ -80,6 +87,7 @@ export class CustomFieldStore implements ICustomFieldStore {
       valueMap: observable,
       fetchedFieldsMap: observable,
       fetchedValuesMap: observable,
+      pendingCreateValues: observable,
       // computed
       projectCustomFields: computed,
       // actions
@@ -90,6 +98,9 @@ export class CustomFieldStore implements ICustomFieldStore {
       fetchIssueCustomFieldValues: action,
       setIssueCustomFieldValue: action,
       deleteIssueCustomFieldValue: action,
+      setPendingCreateValue: action,
+      clearPendingCreateValues: action,
+      flushPendingCreateValues: action,
     });
 
     this.rootStore = _rootStore;
@@ -118,6 +129,33 @@ export class CustomFieldStore implements ICustomFieldStore {
   getIssueCustomFieldValue = computedFn(
     (issueId: string, fieldId: string) => this.valueMap[issueId]?.[fieldId] ?? undefined
   );
+
+  // ---- pending (create-mode) values ----
+
+  /**
+   * The create-work-item modal collects custom field values before an issue
+   * exists. They are buffered here and flushed once the issue is created.
+   */
+  setPendingCreateValue = (fieldId: string, value: TCustomFieldValueData) => {
+    runInAction(() => set(this.pendingCreateValues, [fieldId], value));
+  };
+
+  clearPendingCreateValues = () => {
+    runInAction(() => {
+      this.pendingCreateValues = {};
+    });
+  };
+
+  flushPendingCreateValues = async (workspaceSlug: string, projectId: string, issueId: string) => {
+    const entries = Object.entries(this.pendingCreateValues);
+    // clear eagerly so a re-open (e.g. "create more") starts blank even if a write fails
+    this.clearPendingCreateValues();
+    await Promise.all(
+      entries
+        .filter(([, value]) => value !== null && value !== "" && !(Array.isArray(value) && value.length === 0))
+        .map(([fieldId, value]) => this.setIssueCustomFieldValue(workspaceSlug, projectId, issueId, fieldId, value))
+    );
+  };
 
   // ---- field definitions ----
 

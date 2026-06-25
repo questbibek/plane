@@ -5,6 +5,7 @@
  */
 
 export * from "./field-types";
+export * from "./custom-field-create-section";
 export * from "./custom-field-form";
 export * from "./custom-field-list-item";
 export * from "./custom-field-list-root";
