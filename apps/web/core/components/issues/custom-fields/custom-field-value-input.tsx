@@ -81,7 +81,7 @@ export const CustomFieldValueInput = observer(function CustomFieldValueInput(pro
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onSave(e.target.value === "" ? null : e.target.value)}
           disabled={disabled}
-          className="w-full rounded border border-custom-border-200 bg-custom-background-100 px-2 py-1 text-sm disabled:opacity-60"
+          className="w-full rounded-md border-[0.5px] border-subtle bg-layer-2 px-3 py-2 text-13 disabled:opacity-60"
         />
       );
 

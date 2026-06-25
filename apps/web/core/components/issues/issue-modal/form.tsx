@@ -489,7 +489,7 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
               {projectId &&
                 workspaceSlug &&
                 (data?.id ? (
-                  <div className="px-5">
+                  <div className="max-w-2xl px-5">
                     <CustomFieldValuesSection
                       workspaceSlug={workspaceSlug.toString()}
                       projectId={projectId}

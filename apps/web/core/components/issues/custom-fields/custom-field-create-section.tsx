@@ -9,8 +9,6 @@ import { observer } from "mobx-react";
 import useSWR from "swr";
 // plane imports
 import { SlidersHorizontal } from "lucide-react";
-// components
-import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
 // hooks
 import { useCustomField } from "@/hooks/store/use-custom-field";
 // local imports
@@ -54,17 +52,25 @@ export const CustomFieldCreateSection = observer(function CustomFieldCreateSecti
   if (!fields || fields.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {fields.map((field) => (
-        <SidebarPropertyListItem key={field.id} icon={SlidersHorizontal} label={field.name}>
-          <CustomFieldValueInput
-            field={field}
-            value={pendingCreateValues[field.id]}
-            disabled={false}
-            projectId={projectId}
-            onSave={(value) => setPendingCreateValue(field.id, value)}
-          />
-        </SidebarPropertyListItem>
+        <div key={field.id} className="flex min-h-8 items-center gap-2">
+          <div className="flex w-28 shrink-0 items-center gap-1.5 text-caption-sm-regular text-tertiary">
+            <SlidersHorizontal className="size-3.5 shrink-0" />
+            <span className="truncate" title={field.name}>
+              {field.name}
+            </span>
+          </div>
+          <div className="min-w-0 max-w-sm flex-1">
+            <CustomFieldValueInput
+              field={field}
+              value={pendingCreateValues[field.id]}
+              disabled={false}
+              projectId={projectId}
+              onSave={(value) => setPendingCreateValue(field.id, value)}
+            />
+          </div>
+        </div>
       ))}
     </div>
   );
