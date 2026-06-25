@@ -31,7 +31,8 @@ export type TProjectSettingsTabs =
   | "labels"
   | "custom_fields"
   | "estimates"
-  | "automations";
+  | "automations"
+  | "jira_import";
 export type TProjectSettingsItem = {
   key: TProjectSettingsTabs;
   i18n_label: string;

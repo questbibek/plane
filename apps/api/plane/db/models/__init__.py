@@ -92,3 +92,4 @@ from .sticky import Sticky
 from .description import Description, DescriptionVersion
 
 from .custom_field import CustomField, CustomFieldValue, CustomFieldType
+from .jira_import import JiraImportJob

@@ -240,3 +240,4 @@ from .user.base import AccountEndpoint, ProfileEndpoint, UserSessionEndpoint
 from .timezone.base import TimezoneEndpoint
 
 from .custom_field import CustomFieldViewSet, CustomFieldValueViewSet
+from .jira_import import JiraImportEndpoint, JiraImportDetailEndpoint
