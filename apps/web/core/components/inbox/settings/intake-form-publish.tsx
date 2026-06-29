@@ -9,7 +9,7 @@ import { observer } from "mobx-react";
 import { Copy } from "lucide-react";
 import useSWR from "swr";
 // plane imports
-import { SITES_URL } from "@plane/constants";
+import { SITES_URL, SPACE_BASE_PATH } from "@plane/constants";
 import { setToast, TOAST_TYPE } from "@plane/propel/toast";
 import type { TProjectPublishSettings } from "@plane/types";
 import { ToggleSwitch } from "@plane/ui";
@@ -25,8 +25,18 @@ type Props = {
   projectId: string;
 };
 
-/** The public URL of a published intake form, served by the Spaces app. */
-const buildFormUrl = (anchor: string) => `${SITES_URL}/intake/${anchor}/`;
+/**
+ * Absolute public URL of a published intake form (served by the Spaces app).
+ * Prefers a fully-qualified VITE_SPACE_BASE_URL when configured; otherwise
+ * derives it from the current origin (the Spaces app is same-origin under
+ * SPACE_BASE_PATH, e.g. /spaces, behind the proxy) so no build-time env is
+ * required for the copied link to be shareable.
+ */
+const buildFormUrl = (anchor: string) => {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const base = /^https?:\/\//i.test(SITES_URL) ? SITES_URL : `${origin}${SPACE_BASE_PATH || "/spaces"}`;
+  return `${base}/intake/${anchor}/`;
+};
 
 export const IntakeFormPublish = observer(function IntakeFormPublish(props: Props) {
   const { workspaceSlug, projectId } = props;
