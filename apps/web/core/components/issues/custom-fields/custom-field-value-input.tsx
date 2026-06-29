@@ -28,6 +28,7 @@ export const CustomFieldValueInput = observer(function CustomFieldValueInput(pro
   const { getProjectLabels } = useLabel();
   // local state for text-like inputs (save on blur)
   const [local, setLocal] = useState<string>(value != null ? String(value) : "");
+  const [regexError, setRegexError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocal(value != null ? String(value) : "");
@@ -35,43 +36,77 @@ export const CustomFieldValueInput = observer(function CustomFieldValueInput(pro
 
   const options = field.settings?.options ?? [];
 
+  /** Returns true if `raw` satisfies the field's optional regex restriction. */
+  const matchesRegex = (raw: string): boolean => {
+    const pattern = field.settings?.regex;
+    if (!pattern || raw.trim() === "") return true;
+    try {
+      return new RegExp(pattern).test(raw.trim());
+    } catch {
+      // a malformed stored pattern should never block input
+      return true;
+    }
+  };
+
+  /** Validate against the regex, then save (null when cleared). */
+  const commit = (asNumber: boolean) => {
+    if (!matchesRegex(local)) {
+      setRegexError("Value doesn't match the required format.");
+      return;
+    }
+    setRegexError(null);
+    if (local.trim() === "") onSave(null);
+    else onSave(asNumber ? Number(local) : local);
+  };
+
+  const inputErrorClass = regexError ? " border-danger-strong" : "";
+
   switch (field.field_type) {
     case "text":
     case "url":
       return (
-        <Input
-          type={field.field_type === "url" ? "url" : "text"}
-          value={local}
-          onChange={(e) => setLocal(e.target.value)}
-          onBlur={() => onSave(local.trim() === "" ? null : local)}
-          disabled={disabled}
-          placeholder={field.settings?.placeholder}
-          className="w-full text-sm"
-        />
+        <div className="w-full">
+          <Input
+            type={field.field_type === "url" ? "url" : "text"}
+            value={local}
+            onChange={(e) => setLocal(e.target.value)}
+            onBlur={() => commit(false)}
+            disabled={disabled}
+            placeholder={field.settings?.placeholder}
+            className={`w-full text-sm${inputErrorClass}`}
+          />
+          {regexError && <span className="mt-1 block text-xs text-danger-primary">{regexError}</span>}
+        </div>
       );
 
     case "paragraph":
       return (
-        <TextArea
-          value={local}
-          onChange={(e) => setLocal(e.target.value)}
-          onBlur={() => onSave(local.trim() === "" ? null : local)}
-          disabled={disabled}
-          className="w-full text-sm"
-          rows={3}
-        />
+        <div className="w-full">
+          <TextArea
+            value={local}
+            onChange={(e) => setLocal(e.target.value)}
+            onBlur={() => commit(false)}
+            disabled={disabled}
+            className={`w-full text-sm${inputErrorClass}`}
+            rows={3}
+          />
+          {regexError && <span className="mt-1 block text-xs text-danger-primary">{regexError}</span>}
+        </div>
       );
 
     case "number":
       return (
-        <Input
-          type="number"
-          value={local}
-          onChange={(e) => setLocal(e.target.value)}
-          onBlur={() => onSave(local.trim() === "" ? null : Number(local))}
-          disabled={disabled}
-          className="w-full text-sm"
-        />
+        <div className="w-full">
+          <Input
+            type="number"
+            value={local}
+            onChange={(e) => setLocal(e.target.value)}
+            onBlur={() => commit(true)}
+            disabled={disabled}
+            className={`w-full text-sm${inputErrorClass}`}
+          />
+          {regexError && <span className="mt-1 block text-xs text-danger-primary">{regexError}</span>}
+        </div>
       );
 
     case "date":

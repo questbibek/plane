@@ -13,10 +13,11 @@ import { Button } from "@plane/propel/button";
 import type { ICustomField, ICustomFieldOption, TCustomFieldType } from "@plane/types";
 import { CustomSelect, Input, TextArea, ToggleSwitch } from "@plane/ui";
 // local imports
-import { CUSTOM_FIELD_TYPES, generateOptionId, isOptionField } from "./field-types";
+import { CUSTOM_FIELD_TYPES, generateOptionId, isOptionField, supportsRegex } from "./field-types";
 
 type TFormData = Pick<ICustomField, "name" | "description" | "field_type" | "is_required"> & {
   options: ICustomFieldOption[];
+  regex: string;
 };
 
 type Props = {
@@ -37,11 +38,13 @@ export const CustomFieldForm = observer(function CustomFieldForm(props: Props) {
     field_type: data?.field_type ?? "text",
     is_required: data?.is_required ?? false,
     options: data?.settings?.options ?? [],
+    regex: data?.settings?.regex ?? "",
   });
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = Boolean(data);
   const showOptions = isOptionField(form.field_type);
+  const showRegex = supportsRegex(form.field_type);
 
   const updateOption = (id: string, name: string) => {
     setForm((prev) => ({
@@ -70,12 +73,27 @@ export const CustomFieldForm = observer(function CustomFieldForm(props: Props) {
       return;
     }
 
+    const trimmedRegex = form.regex.trim();
+    if (showRegex && trimmedRegex) {
+      try {
+        // called (not constructed) just to validate the pattern compiles
+        RegExp(trimmedRegex);
+      } catch {
+        setError("The validation pattern is not a valid regular expression.");
+        return;
+      }
+    }
+
+    let settings: ICustomField["settings"] = {};
+    if (showOptions) settings = { options: cleanedOptions };
+    else if (showRegex && trimmedRegex) settings = { regex: trimmedRegex };
+
     const payload: Partial<ICustomField> = {
       name: form.name.trim(),
       description: form.description.trim(),
       field_type: form.field_type,
       is_required: form.is_required,
-      settings: showOptions ? { options: cleanedOptions } : {},
+      settings,
     };
     await onSubmit(payload);
   };
@@ -160,6 +178,21 @@ export const CustomFieldForm = observer(function CustomFieldForm(props: Props) {
           >
             + {t("project_settings.custom_fields.add_option")}
           </button>
+        </div>
+      )}
+
+      {showRegex && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-custom-text-300">Validation pattern (regex)</span>
+          <Input
+            value={form.regex}
+            onChange={(e) => setForm((prev) => ({ ...prev, regex: e.target.value }))}
+            placeholder="e.g. ^[A-Z]{2,4}-\d+$"
+            className="w-full font-mono"
+          />
+          <span className="text-xs text-custom-text-400">
+            Optional. Entered values must match this regular expression.
+          </span>
         </div>
       )}
 

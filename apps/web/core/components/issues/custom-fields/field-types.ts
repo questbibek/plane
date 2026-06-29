@@ -31,5 +31,10 @@ export const OPTION_FIELD_TYPES: TCustomFieldType[] = ["select", "multi_select"]
 
 export const isOptionField = (type: TCustomFieldType): boolean => OPTION_FIELD_TYPES.includes(type);
 
+/** Field types whose entered value can be restricted with a regular expression. */
+export const REGEX_FIELD_TYPES: TCustomFieldType[] = ["text", "paragraph", "url", "number"];
+
+export const supportsRegex = (type: TCustomFieldType): boolean => REGEX_FIELD_TYPES.includes(type);
+
 /** Local-only id for an option before it is persisted. */
 export const generateOptionId = (): string => `opt_${Math.random().toString(36).slice(2, 10)}`;

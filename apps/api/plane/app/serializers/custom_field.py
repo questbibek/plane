@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+# Python imports
+import re
+
 # Third party imports
 from rest_framework import serializers
 
@@ -12,6 +15,14 @@ from plane.db.models import CustomField, CustomFieldValue, CustomFieldType
 
 # Field types whose `settings` must carry a non-empty option list
 OPTION_FIELD_TYPES = {CustomFieldType.SELECT, CustomFieldType.MULTI_SELECT}
+
+# Field types whose value can be restricted with a `settings.regex` pattern
+REGEX_FIELD_TYPES = {
+    CustomFieldType.TEXT,
+    CustomFieldType.PARAGRAPH,
+    CustomFieldType.URL,
+    CustomFieldType.NUMBER,
+}
 
 
 class CustomFieldSerializer(BaseSerializer):
@@ -70,3 +81,21 @@ class CustomFieldValueSerializer(BaseSerializer):
             "updated_at",
         ]
         read_only_fields = ["workspace", "project", "issue", "created_at", "updated_at"]
+
+    def validate(self, data):
+        custom_field = data.get("custom_field") or getattr(self.instance, "custom_field", None)
+        value = data.get("value", getattr(self.instance, "value", None))
+
+        if custom_field and custom_field.field_type in REGEX_FIELD_TYPES and value not in (None, ""):
+            pattern = (custom_field.settings or {}).get("regex")
+            if pattern:
+                try:
+                    matches = re.search(pattern, str(value)) is not None
+                except re.error:
+                    # a malformed stored pattern should never block saving
+                    matches = True
+                if not matches:
+                    raise serializers.ValidationError(
+                        {"value": "Value does not match the required pattern for this field."}
+                    )
+        return data
