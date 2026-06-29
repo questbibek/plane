@@ -559,7 +559,8 @@ class DeployBoardViewSet(BaseViewSet):
         project_deploy_board, _ = DeployBoard.objects.get_or_create(
             entity_name="project", entity_identifier=project_id, project_id=project_id
         )
-        project_deploy_board.intake = intake
+        # assign by id so a raw intake UUID (or None to disable) is accepted
+        project_deploy_board.intake_id = intake
         project_deploy_board.view_props = views
         project_deploy_board.is_votes_enabled = votes
         project_deploy_board.is_comments_enabled = comments

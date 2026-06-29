@@ -29,6 +29,8 @@ export type TPublishSettings = {
   entity_name: TPublishEntityType | undefined;
   id: string | undefined;
   inbox: unknown;
+  /** The project's intake id when the intake form is published, else null. */
+  intake: string | null | undefined;
   is_comments_enabled: boolean;
   is_reactions_enabled: boolean;
   is_votes_enabled: boolean;

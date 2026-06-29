@@ -13,6 +13,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 # Third party imports
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 # Module imports
 from .base import BaseViewSet
@@ -33,6 +34,13 @@ class IntakeIssuePublicViewSet(BaseViewSet):
     model = IntakeIssue
 
     filterset_fields = ["status"]
+
+    def get_permissions(self):
+        # Public intake forms accept anonymous submissions; everything else
+        # (listing/triage) still requires authentication.
+        if self.action == "create":
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         project_deploy_board = DeployBoard.objects.get(
@@ -151,16 +159,18 @@ class IntakeIssuePublicViewSet(BaseViewSet):
             state_id=triage_state.id,
         )
 
-        # Create an Issue Activity
-        issue_activity.delay(
-            type="issue.activity.created",
-            requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
-            actor_id=str(request.user.id),
-            issue_id=str(issue.id),
-            project_id=str(project_deploy_board.project_id),
-            current_instance=None,
-            epoch=int(timezone.now().timestamp()),
-        )
+        # Create an Issue Activity (only when a real user is attached; public
+        # form submissions can be anonymous and have no actor to record).
+        if request.user and request.user.is_authenticated:
+            issue_activity.delay(
+                type="issue.activity.created",
+                requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
+                actor_id=str(request.user.id),
+                issue_id=str(issue.id),
+                project_id=str(project_deploy_board.project_id),
+                current_instance=None,
+                epoch=int(timezone.now().timestamp()),
+            )
         # create an intake issue
         IntakeIssue.objects.create(
             intake_id=intake_id,

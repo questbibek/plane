@@ -13,6 +13,7 @@ import { NotAuthorizedView } from "@/components/auth-screens/not-authorized-view
 import { PageHead } from "@/components/core/page-title";
 import { SettingsContentWrapper } from "@/components/settings/content-wrapper";
 import { SettingsHeading } from "@/components/settings/heading";
+import { IntakeFormPublish } from "@/components/inbox/settings/intake-form-publish";
 import { ProjectSettingsFeatureControlItem } from "@/components/settings/project/content/feature-control-item";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
@@ -55,6 +56,9 @@ function FeaturesIntakeSettingsPage({ params }: Route.ComponentProps) {
             value={!!currentProjectDetails?.inbox_view}
             workspaceSlug={workspaceSlug}
           />
+          {currentProjectDetails?.inbox_view && (
+            <IntakeFormPublish workspaceSlug={workspaceSlug} projectId={projectId} />
+          )}
         </div>
       </section>
     </SettingsContentWrapper>
