@@ -4,6 +4,7 @@
 
 # Python imports
 import json
+import re
 
 # Django imports
 from django.db.models import Q
@@ -457,3 +458,107 @@ class ComplexFilterBackend(filters.BaseFilterBackend):
 
     def _is_scalar(self, value):
         return value is None or isinstance(value, (str, int, float, bool))
+
+
+class WorkItemFilterBackend(ComplexFilterBackend):
+    """
+    Work-item filter backend that additionally understands project custom field
+    conditions of the form ``custom_field_<uuid>__<operator>``.
+
+    Custom fields are admin-defined per project, so they can't be declared as
+    static filters on the FilterSet. Instead, custom field conditions are peeled
+    off each leaf and turned into ``pk__in`` subqueries over ``CustomFieldValue``
+    (one subquery per condition so multiple custom field filters AND correctly
+    instead of collapsing onto a single related row). Everything else is handled
+    by the base :class:`ComplexFilterBackend`.
+    """
+
+    CUSTOM_FIELD_PREFIX = "custom_field_"
+    _CUSTOM_FIELD_KEY_RE = re.compile(r"^custom_field_([0-9a-fA-F-]{36})__([a-z_]+)$")
+
+    def _is_custom_field_key(self, key):
+        return isinstance(key, str) and key.startswith(self.CUSTOM_FIELD_PREFIX)
+
+    def _validate_fields(self, filter_data, view):
+        """Allow custom field keys (validated by pattern); validate the rest normally."""
+        filterset_class = getattr(view, "filterset_class", None)
+        allowed_fields = set(filterset_class.base_filters.keys()) if filterset_class else None
+        if not allowed_fields:
+            raise DRFValidationError(
+                {
+                    "message": ("Filtering is not enabled for this endpoint (missing filterset_class)"),
+                    "code": "filtering_not_enabled",
+                }
+            )
+
+        for field in self._extract_field_names(filter_data):
+            if self._is_custom_field_key(field):
+                continue
+            if field not in allowed_fields:
+                raise DRFValidationError(
+                    {
+                        "message": f"Filtering on field '{field}' is not allowed",
+                        "code": "invalid_filter_field",
+                    }
+                )
+
+    def _build_leaf_q(self, leaf_conditions, view, queryset):
+        """Split custom field conditions from standard ones, then AND them together."""
+        if not leaf_conditions:
+            return Q()
+
+        custom_conditions = {k: v for k, v in leaf_conditions.items() if self._is_custom_field_key(k)}
+        standard_conditions = {k: v for k, v in leaf_conditions.items() if not self._is_custom_field_key(k)}
+
+        combined_q = super()._build_leaf_q(standard_conditions, view, queryset) if standard_conditions else Q()
+        for key, value in custom_conditions.items():
+            combined_q &= self._build_custom_field_q(key, value)
+        return combined_q
+
+    def _build_custom_field_q(self, key, value):
+        """Build a ``pk__in`` Q for a single ``custom_field_<uuid>__<op>`` condition."""
+        # Imported lazily to avoid import cycles at module load time.
+        from plane.db.models import CustomField, CustomFieldValue
+        from plane.db.models.custom_field import CustomFieldType
+
+        match = self._CUSTOM_FIELD_KEY_RE.match(key)
+        if not match:
+            raise DRFValidationError(
+                {
+                    "message": f"Invalid custom field filter '{key}'",
+                    "code": "invalid_custom_field_filter",
+                }
+            )
+
+        field_id = match.group(1)
+        field = CustomField.objects.filter(id=field_id, deleted_at__isnull=True).first()
+        if field is None:
+            # Unknown / deleted field -> match nothing rather than error.
+            return Q(pk__in=[])
+
+        values = list(value) if isinstance(value, (list, tuple)) else [value]
+        value_q = Q()
+        if field.field_type in (CustomFieldType.MULTI_SELECT, CustomFieldType.LABEL):
+            # Stored as a JSON list; match rows whose list contains any selected option.
+            for item in values:
+                value_q |= Q(value__contains=[item])
+        elif field.field_type == CustomFieldType.CHECKBOX:
+            for item in values:
+                if isinstance(item, bool):
+                    value_q |= Q(value=item)
+                elif str(item).lower() in ("true", "1"):
+                    value_q |= Q(value=True)
+                elif str(item).lower() in ("false", "0"):
+                    value_q |= Q(value=False)
+        else:
+            # select / member / scalar: exact value match against the stored JSON scalar.
+            for item in values:
+                value_q |= Q(value=item)
+
+        if not value_q:
+            return Q(pk__in=[])
+
+        matching = CustomFieldValue.objects.filter(
+            Q(custom_field_id=field_id, deleted_at__isnull=True) & value_q
+        ).values("issue_id")
+        return Q(pk__in=matching)

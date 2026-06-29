@@ -5,7 +5,8 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { AtSign, Briefcase } from "lucide-react";
+import { AtSign, Briefcase, SlidersHorizontal } from "lucide-react";
+import useSWR from "swr";
 // plane imports
 import { Logo } from "@plane/propel/emoji-icon-picker";
 import {
@@ -24,6 +25,7 @@ import {
   PriorityPropertyIcon,
 } from "@plane/propel/icons";
 import type {
+  ICustomField,
   ICycle,
   IState,
   IUserLite,
@@ -38,6 +40,7 @@ import {
   getAssigneeFilterConfig,
   getCreatedAtFilterConfig,
   getCreatedByFilterConfig,
+  getCustomFieldFilterConfig,
   getCycleFilterConfig,
   getFileURL,
   getLabelFilterConfig,
@@ -54,6 +57,7 @@ import {
   isLoaderReady,
 } from "@plane/utils";
 // store hooks
+import { useCustomField } from "@/hooks/store/use-custom-field";
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useLabel } from "@/hooks/store/use-label";
 import { useMember } from "@/hooks/store/use-member";
@@ -98,6 +102,12 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
   const { getModuleById } = useModule();
   const { getStateById } = useProjectState();
   const { getUserDetails } = useMember();
+  const { getProjectCustomFields, fetchProjectCustomFields } = useCustomField();
+  // fetch the project's custom field definitions so they can be offered as filters
+  useSWR(
+    workspaceSlug && projectId ? `CUSTOM_FIELDS_${workspaceSlug}_${projectId}` : null,
+    workspaceSlug && projectId ? () => fetchProjectCustomFields(workspaceSlug, projectId) : null
+  );
   // derived values
   const operatorConfigs = useFiltersOperatorConfigs({ workspaceSlug });
   const filtersToShow = useMemo(() => new Set(allowedFilters), [allowedFilters]);
@@ -362,9 +372,48 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
     [isFilterEnabled, projects, operatorConfigs]
   );
 
+  // custom field filter configs (project-scoped). Built dynamically since custom
+  // fields are admin-defined per project. Only option-like + checkbox types.
+  const customFieldConfigs = useMemo(() => {
+    const fields = projectId ? getProjectCustomFields(projectId) : undefined;
+    if (!projectId || !fields) return [] as TFilterConfig<TWorkItemFilterProperty>[];
+    const SUPPORTED_TYPES = new Set<ICustomField["field_type"]>([
+      "select",
+      "multi_select",
+      "member",
+      "label",
+      "checkbox",
+    ]);
+    return fields
+      .filter((field) => field.is_active && SUPPORTED_TYPES.has(field.field_type))
+      .map((field) => {
+        let options: { id: string; name: string }[];
+        if (field.field_type === "member") {
+          options = (members ?? []).map((member) => ({ id: member.id, name: member.display_name }));
+        } else if (field.field_type === "label") {
+          options = (workItemLabels ?? []).map((label) => ({ id: label.id, name: label.name }));
+        } else if (field.field_type === "checkbox") {
+          options = [
+            { id: "true", name: "Checked" },
+            { id: "false", name: "Unchecked" },
+          ];
+        } else {
+          options = (field.settings?.options ?? []).map((option) => ({ id: option.id, name: option.name }));
+        }
+        return getCustomFieldFilterConfig<TWorkItemFilterProperty>(`custom_field_${field.id}`)({
+          isEnabled: true,
+          filterIcon: SlidersHorizontal,
+          fieldName: field.name,
+          options,
+          ...operatorConfigs,
+        });
+      });
+  }, [projectId, getProjectCustomFields, members, workItemLabels, operatorConfigs]);
+
   return {
     areAllConfigsInitialized,
     configs: [
+      ...customFieldConfigs,
       stateFilterConfig,
       stateGroupFilterConfig,
       assigneeFilterConfig,
@@ -382,6 +431,13 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       subscriberFilterConfig,
     ],
     configMap: {
+      ...customFieldConfigs.reduce(
+        (acc, config) => {
+          acc[config.id] = config;
+          return acc;
+        },
+        {} as { [key in TWorkItemFilterProperty]?: TFilterConfig<TWorkItemFilterProperty> }
+      ),
       project_id: projectFilterConfig,
       state_group: stateGroupFilterConfig,
       state_id: stateFilterConfig,

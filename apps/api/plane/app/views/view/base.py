@@ -45,7 +45,7 @@ from plane.utils.order_queryset import order_issue_queryset
 from plane.bgtasks.recent_visited_task import recent_visited_task
 from .. import BaseViewSet
 from plane.db.models import UserFavorite
-from plane.utils.filters import ComplexFilterBackend
+from plane.utils.filters import WorkItemFilterBackend
 from plane.utils.filters import IssueFilterSet
 
 
@@ -136,7 +136,7 @@ class WorkspaceViewViewSet(BaseViewSet):
 
 
 class WorkspaceViewIssuesViewSet(BaseViewSet):
-    filter_backends = (ComplexFilterBackend,)
+    filter_backends = (WorkItemFilterBackend,)
     filterset_class = IssueFilterSet
 
     def _get_project_permission_filters(self):
