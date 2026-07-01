@@ -55,8 +55,8 @@ export const IntakeFormPublish = observer(function IntakeFormPublish(props: Prop
     try {
       let intakeId: string | null = null;
       if (enable) {
-        const intakes = await inboxIssueService.fetchIntakes(workspaceSlug, projectId);
-        intakeId = intakes?.[0]?.id ?? null;
+        const intake = await inboxIssueService.fetchDefaultIntake(workspaceSlug, projectId);
+        intakeId = intake?.id ?? null;
         if (!intakeId) {
           setToast({
             type: TOAST_TYPE.ERROR,

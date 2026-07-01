@@ -27,8 +27,14 @@ export class InboxIssueService extends APIService {
       });
   }
 
-  /** Fetch the project's intakes (used to resolve the default intake id). */
-  async fetchIntakes(workspaceSlug: string, projectId: string): Promise<{ id: string; name: string }[]> {
+  /**
+   * Fetch the project's default intake (used to resolve the intake id).
+   * The endpoint returns a single intake object, not a list.
+   */
+  async fetchDefaultIntake(
+    workspaceSlug: string,
+    projectId: string
+  ): Promise<{ id?: string; name?: string } | undefined> {
     return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/intakes/`)
       .then((response) => response?.data)
       .catch((error) => {
