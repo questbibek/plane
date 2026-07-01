@@ -84,7 +84,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
   const handleIdentifierChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
     const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-    const formattedValue = alphanumericValue.toUpperCase();
+    // clamp to the same max the validation enforces so typing/pasting can't exceed it
+    const formattedValue = alphanumericValue.toUpperCase().substring(0, 10);
     setValue("identifier", formattedValue);
   };
 

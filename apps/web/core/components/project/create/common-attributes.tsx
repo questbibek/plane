@@ -52,7 +52,8 @@ function ProjectCommonAttributes(props: Props) {
 
   const handleIdentifierChange = (onChange: (value: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    const alphanumericValue = projectIdentifierSanitizer(value);
+    // clamp to the same max the validation enforces so typing/pasting can't exceed it
+    const alphanumericValue = projectIdentifierSanitizer(value).substring(0, 10);
     setShouldAutoSyncIdentifier(false);
     onChange(alphanumericValue);
     handleFormOnChange?.();
