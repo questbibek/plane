@@ -65,15 +65,11 @@ const WorkspaceMembersSettingsPage = observer(function WorkspaceMembersSettingsP
         message: t("workspace_settings.settings.members.invitations_sent_successfully"),
       });
     } catch (error: unknown) {
-      let message = undefined;
-      if (error instanceof Error) {
-        const err = error as Error & { error?: string };
-        message = err.error;
-      }
+      const err = error as { error?: string };
       setToast({
         type: TOAST_TYPE.ERROR,
         title: "Error!",
-        message: `${message ?? t("something_went_wrong_please_try_again")}`,
+        message: err?.error ?? t("something_went_wrong_please_try_again"),
       });
 
       throw error;
