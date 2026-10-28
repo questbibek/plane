@@ -46,6 +46,7 @@ from plane.db.models import (
     UserRecentVisit,
 )
 from plane.utils.error_codes import ERROR_CODES
+from plane.utils.page_folders import validate_page_folder
 
 # Local imports
 from ..base import BaseAPIView, BaseViewSet
@@ -127,6 +128,10 @@ class PageViewSet(BaseViewSet):
         )
 
     def create(self, request, slug, project_id):
+        error = validate_page_folder(request.data.get("folder"), project_id)
+        if error:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = PageSerializer(
             data=request.data,
             context={
@@ -160,8 +165,13 @@ class PageViewSet(BaseViewSet):
                 project_pages__deleted_at__isnull=True,
             )
 
-            if page.is_locked:
+            # Locking protects content; folder and tags are organisation and stay editable
+            if page.is_locked and not set(request.data.keys()) <= {"folder", "tags"}:
                 return Response({"error": "Page is locked"}, status=status.HTTP_400_BAD_REQUEST)
+
+            error = validate_page_folder(request.data.get("folder"), project_id)
+            if error:
+                return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
 
             parent = request.data.get("parent", None)
             if parent:

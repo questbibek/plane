@@ -12,8 +12,10 @@ from plane.utils.content_validator import (
     validate_binary_data,
     validate_html_content,
 )
+from plane.db.models.page import MAX_PAGE_TAGS, MAX_PAGE_TAG_LENGTH, normalize_page_tags
 from plane.db.models import (
     Page,
+    PageFolder,
     PageLabel,
     Label,
     ProjectPage,
@@ -32,6 +34,7 @@ class PageSerializer(BaseSerializer):
     # Many to many
     label_ids = serializers.ListField(child=serializers.UUIDField(), required=False)
     project_ids = serializers.ListField(child=serializers.UUIDField(), required=False)
+    tags = serializers.ListField(child=serializers.CharField(allow_blank=True), required=False)
 
     class Meta:
         model = Page
@@ -55,8 +58,18 @@ class PageSerializer(BaseSerializer):
             "logo_props",
             "label_ids",
             "project_ids",
+            "folder",
+            "tags",
         ]
         read_only_fields = ["workspace", "owned_by"]
+
+    def validate_tags(self, value):
+        tags = normalize_page_tags(value)
+        if len(tags) > MAX_PAGE_TAGS:
+            raise serializers.ValidationError(f"A page can have at most {MAX_PAGE_TAGS} tags")
+        if any(len(tag) > MAX_PAGE_TAG_LENGTH for tag in tags):
+            raise serializers.ValidationError(f"Tags can be at most {MAX_PAGE_TAG_LENGTH} characters")
+        return tags
 
     def create(self, validated_data):
         labels = validated_data.pop("labels", None)
@@ -124,6 +137,25 @@ class PageSerializer(BaseSerializer):
             )
 
         return super().update(instance, validated_data)
+
+
+class PageFolderSerializer(BaseSerializer):
+    class Meta:
+        model = PageFolder
+        fields = [
+            "id",
+            "name",
+            "parent",
+            "project",
+            "workspace",
+            "logo_props",
+            "sort_order",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["workspace", "project"]
 
 
 class PageDetailSerializer(PageSerializer):

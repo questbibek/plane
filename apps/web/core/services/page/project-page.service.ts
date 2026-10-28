@@ -6,7 +6,7 @@
 
 // types
 import { API_BASE_URL } from "@plane/constants";
-import type { TDocumentPayload, TPage } from "@plane/types";
+import type { TDocumentPayload, TPage, TPageTagSummary } from "@plane/types";
 // helpers
 // services
 import { APIService } from "@/services/api.service";
@@ -64,6 +64,38 @@ export class ProjectPageService extends APIService {
     data: Pick<TPage, "access">
   ): Promise<void> {
     return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/pages/${pageId}/access/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async fetchTags(workspaceSlug: string, projectId: string): Promise<TPageTagSummary[]> {
+    return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/page-tags/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async renameTag(
+    workspaceSlug: string,
+    projectId: string,
+    name: string,
+    newName: string
+  ): Promise<{ pages_updated: number }> {
+    return this.patch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/page-tags/`, {
+      name,
+      new_name: newName,
+    })
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async deleteTag(workspaceSlug: string, projectId: string, name: string): Promise<{ pages_updated: number }> {
+    return this.delete(`/api/workspaces/${workspaceSlug}/projects/${projectId}/page-tags/`, { name })
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

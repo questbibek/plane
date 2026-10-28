@@ -13,6 +13,7 @@ import { replaceUnderscoreIfSnakeCase } from "@plane/utils";
 // components
 import { AppliedDateFilters } from "@/components/common/applied-filters/date";
 import { AppliedMembersFilters } from "@/components/common/applied-filters/members";
+import { PageTagChip } from "@/components/pages/tags/tag-chip";
 
 type Props = {
   appliedFilters: TPageFilterProps;
@@ -21,8 +22,9 @@ type Props = {
   alwaysAllowEditing?: boolean;
 };
 
-const MEMBERS_FILTERS = ["created_by"];
-const DATE_FILTERS = ["created_at"];
+const MEMBERS_FILTERS = new Set(["created_by"]);
+const DATE_FILTERS = new Set(["created_at"]);
+const TAG_FILTERS = new Set(["tags"]);
 
 export function PageAppliedFiltersList(props: Props) {
   const { appliedFilters, handleClearAllFilters, handleRemoveFilter, alwaysAllowEditing } = props;
@@ -45,20 +47,29 @@ export function PageAppliedFiltersList(props: Props) {
           <Tag key={filterKey}>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-11 text-tertiary">{replaceUnderscoreIfSnakeCase(filterKey)}</span>
-              {DATE_FILTERS.includes(filterKey) && (
+              {DATE_FILTERS.has(filterKey) && (
                 <AppliedDateFilters
                   editable={isEditingAllowed}
                   handleRemove={(val) => handleRemoveFilter(filterKey, val)}
                   values={Array.isArray(value) ? value : []}
                 />
               )}
-              {MEMBERS_FILTERS.includes(filterKey) && (
+              {MEMBERS_FILTERS.has(filterKey) && (
                 <AppliedMembersFilters
                   editable={isEditingAllowed}
                   handleRemove={(val) => handleRemoveFilter(filterKey, val)}
                   values={Array.isArray(value) ? value : []}
                 />
               )}
+              {TAG_FILTERS.has(filterKey) &&
+                Array.isArray(value) &&
+                value.map((tag) => (
+                  <PageTagChip
+                    key={tag}
+                    tag={tag}
+                    onRemove={isEditingAllowed ? () => handleRemoveFilter(filterKey, tag) : undefined}
+                  />
+                ))}
               {isEditingAllowed && (
                 <button
                   type="button"

@@ -48,15 +48,15 @@ export const orderPages = (
 
   if (sortByKey === "name") {
     orderedPages = sortBy(pages, [(m) => m.name?.toLowerCase()]);
-    if (sortByOrder === "desc") orderedPages = orderedPages.reverse();
+    if (sortByOrder === "desc") orderedPages = orderedPages.toReversed();
   }
   if (sortByKey === "created_at") {
     orderedPages = sortBy(pages, [(m) => m.created_at]);
-    if (sortByOrder === "desc") orderedPages = orderedPages.reverse();
+    if (sortByOrder === "desc") orderedPages = orderedPages.toReversed();
   }
   if (sortByKey === "updated_at") {
     orderedPages = sortBy(pages, [(m) => m.updated_at]);
-    if (sortByOrder === "desc") orderedPages = orderedPages.reverse();
+    if (sortByOrder === "desc") orderedPages = orderedPages.toReversed();
   }
 
   return orderedPages;
@@ -82,6 +82,11 @@ export const shouldFilterPage = (page: TPage, filters: TPageFilterProps | undefi
     }
   });
   if (filters?.favorites && !page.is_favorite) fallsInFilters = false;
+  // a page must carry every selected tag (case-insensitive)
+  if (filters?.tags && filters.tags.length > 0) {
+    const pageTags = new Set((page.tags ?? []).map((tag) => tag.toLowerCase()));
+    if (!filters.tags.every((tag) => pageTags.has(tag.toLowerCase()))) fallsInFilters = false;
+  }
 
   return fallsInFilters;
 };

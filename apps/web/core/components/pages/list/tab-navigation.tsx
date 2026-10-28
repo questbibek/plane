@@ -5,6 +5,7 @@
  */
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 // types
 import type { TPageNavigationTabs } from "@plane/types";
 // helpers
@@ -34,6 +35,8 @@ const pageTabs: { key: TPageNavigationTabs; label: string }[] = [
 
 export function PageTabNavigation(props: TPageTabNavigation) {
   const { workspaceSlug, projectId, pageType } = props;
+  // stay in the open folder when switching between public and private
+  const folderId = useSearchParams().get("folder");
 
   const handleTabClick = (e: React.MouseEvent<HTMLAnchorElement>, tabKey: TPageNavigationTabs) => {
     if (tabKey === pageType) e.preventDefault();
@@ -44,7 +47,9 @@ export function PageTabNavigation(props: TPageTabNavigation) {
       {pageTabs.map((tab) => (
         <Link
           key={tab.key}
-          href={`/${workspaceSlug}/projects/${projectId}/pages?type=${tab.key}`}
+          href={`/${workspaceSlug}/projects/${projectId}/pages?type=${tab.key}${
+            folderId && tab.key !== "archived" ? `&folder=${folderId}` : ""
+          }`}
           onClick={(e) => handleTabClick(e, tab.key)}
           className="flex h-full flex-col"
         >

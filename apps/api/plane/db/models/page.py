@@ -8,6 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 
 # Django imports
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 # Module imports
@@ -53,6 +54,16 @@ class Page(BaseModel):
     moved_to_page = models.UUIDField(null=True, blank=True)
     moved_to_project = models.UUIDField(null=True, blank=True)
     sort_order = models.FloatField(default=DEFAULT_SORT_ORDER)
+    # Directory-style grouping; null means the page sits at the project root
+    folder = models.ForeignKey(
+        "db.PageFolder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pages",
+    )
+    # Free-form strings for grouping and finding pages; normalised by normalize_page_tags
+    tags = ArrayField(models.CharField(max_length=50), default=list, blank=True)
 
     external_id = models.CharField(max_length=255, null=True, blank=True)
     external_source = models.CharField(max_length=255, null=True, blank=True)
@@ -75,6 +86,22 @@ class Page(BaseModel):
             else strip_tags(self.description_html)
         )
         super(Page, self).save(*args, **kwargs)
+
+
+MAX_PAGE_TAGS = 20
+MAX_PAGE_TAG_LENGTH = 50
+
+
+def normalize_page_tags(tags):
+    """Trim, drop empties and de-duplicate case-insensitively, keeping first spelling and order."""
+    seen = set()
+    result = []
+    for tag in tags or []:
+        value = " ".join(str(tag).split())
+        if value and value.lower() not in seen:
+            seen.add(value.lower())
+            result.append(value)
+    return result
 
 
 class PageLog(BaseModel):
@@ -130,6 +157,47 @@ class PageLabel(BaseModel):
 
     def __str__(self):
         return f"{self.page.name} {self.label.name}"
+
+
+class PageFolder(BaseModel):
+    """A project-scoped folder for pages; folders nest via parent."""
+
+    DEFAULT_SORT_ORDER = 65535
+
+    workspace = models.ForeignKey("db.Workspace", on_delete=models.CASCADE, related_name="page_folders")
+    project = models.ForeignKey("db.Project", on_delete=models.CASCADE, related_name="page_folders")
+    name = models.CharField(max_length=255)
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="child_folders",
+    )
+    logo_props = models.JSONField(default=dict, blank=True)
+    sort_order = models.FloatField(default=DEFAULT_SORT_ORDER)
+
+    class Meta:
+        verbose_name = "Page Folder"
+        verbose_name_plural = "Page Folders"
+        db_table = "page_folders"
+        ordering = ("name",)
+
+    def __str__(self):
+        return f"{self.project_id} <{self.name}>"
+
+    def descendant_ids(self):
+        """Ids of this folder and every folder nested under it."""
+        ids = [self.id]
+        frontier = [self.id]
+        while frontier:
+            frontier = list(
+                PageFolder.objects.filter(parent_id__in=frontier, project_id=self.project_id).values_list(
+                    "id", flat=True
+                )
+            )
+            ids.extend(frontier)
+        return ids
 
 
 class ProjectPage(BaseModel):

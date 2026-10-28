@@ -11,9 +11,26 @@ from plane.app.views import (
     PagesDescriptionViewSet,
     PageVersionEndpoint,
     PageDuplicateEndpoint,
+    PageFolderViewSet,
+    PageTagEndpoint,
 )
 
 urlpatterns = [
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/page-tags/",
+        PageTagEndpoint.as_view(),
+        name="project-page-tags",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/page-folders/",
+        PageFolderViewSet.as_view({"get": "list", "post": "create"}),
+        name="project-page-folders",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/page-folders/<uuid:pk>/",
+        PageFolderViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
+        name="project-page-folders",
+    ),
     path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/pages-summary/",
         PageViewSet.as_view({"get": "summary"}),

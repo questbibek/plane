@@ -11,19 +11,24 @@ import type { TPageFilterProps, TPageFilters } from "@plane/types";
 // components
 import { FilterCreatedDate } from "@/components/common/filters/created-at";
 import { FilterCreatedBy } from "@/components/common/filters/created-by";
-import { FilterOption } from "@/components/issues/issue-layouts/filters";
+import { FilterHeader, FilterOption } from "@/components/issues/issue-layouts/filters";
+import { PageTagChip } from "@/components/pages/tags/tag-chip";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 
 type Props = {
   filters: TPageFilters;
   handleFiltersUpdate: <T extends keyof TPageFilters>(filterKey: T, filterValue: TPageFilters[T]) => void;
   memberIds?: string[] | undefined;
+  tags?: string[];
 };
 
 export const PageFiltersSelection = observer(function PageFiltersSelection(props: Props) {
-  const { filters, handleFiltersUpdate, memberIds } = props;
+  const { filters, handleFiltersUpdate, memberIds, tags = [] } = props;
   // states
   const [filtersSearchQuery, setFiltersSearchQuery] = useState("");
+  const [isTagsPreviewEnabled, setIsTagsPreviewEnabled] = useState(true);
+  const appliedTags = filters.filters?.tags ?? [];
+  const visibleTags = tags.filter((tag) => tag.toLowerCase().includes(filtersSearchQuery.toLowerCase()));
   const inputRef = useRef<HTMLInputElement>(null);
   const { isMobile } = usePlatformOS();
 
@@ -97,6 +102,28 @@ export const PageFiltersSelection = observer(function PageFiltersSelection(props
             handleUpdate={(val) => handleFilters("created_at", val)}
             searchQuery={filtersSearchQuery}
           />
+        </div>
+
+        {/* tags */}
+        <div className="py-2">
+          <FilterHeader
+            title={`Tags${appliedTags.length > 0 ? ` (${appliedTags.length})` : ""}`}
+            isPreviewEnabled={isTagsPreviewEnabled}
+            handleIsPreviewEnabled={() => setIsTagsPreviewEnabled(!isTagsPreviewEnabled)}
+          />
+          {isTagsPreviewEnabled &&
+            (visibleTags.length > 0 ? (
+              visibleTags.map((tag) => (
+                <FilterOption
+                  key={`tag-${tag}`}
+                  isChecked={appliedTags.some((applied) => applied.toLowerCase() === tag.toLowerCase())}
+                  onClick={() => handleFilters("tags", tag)}
+                  title={<PageTagChip tag={tag} />}
+                />
+              ))
+            ) : (
+              <p className="text-11 text-placeholder italic">{tags.length ? "No matches found" : "No tags yet"}</p>
+            ))}
         </div>
 
         {/* created by */}

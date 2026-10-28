@@ -37,7 +37,7 @@ export const PagesListHeaderRoot = observer(function PagesListHeaderRoot(props: 
   const { pageType, projectId, storeType, workspaceSlug } = props;
   const { t } = useTranslation();
   // store hooks
-  const { filters, updateFilters, clearAllFilters } = usePageStore(storeType);
+  const { filters, updateFilters, clearAllFilters, getProjectTags } = usePageStore(storeType);
   const {
     workspace: { workspaceMemberIds },
   } = useMember();
@@ -88,6 +88,7 @@ export const PagesListHeaderRoot = observer(function PagesListHeaderRoot(props: 
               filters={filters}
               handleFiltersUpdate={updateFilters}
               memberIds={workspaceMemberIds ?? undefined}
+              tags={getProjectTags(projectId)}
             />
           </FiltersDropdown>
         </Header.RightItem>

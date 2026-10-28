@@ -6,6 +6,7 @@
 
 import { useRef } from "react";
 import { observer } from "mobx-react";
+import { Folder } from "lucide-react";
 import { Logo } from "@plane/propel/emoji-icon-picker";
 import { PageIcon } from "@plane/propel/icons";
 // plane imports
@@ -22,10 +23,13 @@ import { usePage } from "@/plane-web/hooks/store";
 type TPageListBlock = {
   pageId: string;
   storeType: EPageStoreType;
+  onMoveToFolder?: () => void;
+  // shown next to the title in flat (search) results so the page's location is visible
+  folderPath?: string;
 };
 
 export const PageListBlock = observer(function PageListBlock(props: TPageListBlock) {
-  const { pageId, storeType } = props;
+  const { pageId, storeType, onMoveToFolder, folderPath } = props;
   // refs
   const parentRef = useRef(null);
   // hooks
@@ -51,8 +55,18 @@ export const PageListBlock = observer(function PageListBlock(props: TPageListBlo
         </>
       }
       title={getPageName(name)}
+      appendTitleElement={
+        folderPath ? (
+          <span className="flex items-center gap-1 text-11 text-tertiary">
+            <Folder className="size-3" />
+            {folderPath}
+          </span>
+        ) : undefined
+      }
       itemLink={getRedirectionLink()}
-      actionableItems={<BlockItemAction page={page} parentRef={parentRef} storeType={storeType} />}
+      actionableItems={
+        <BlockItemAction page={page} parentRef={parentRef} storeType={storeType} onMoveToFolder={onMoveToFolder} />
+      }
       isMobile={isMobile}
       parentRef={parentRef}
     />

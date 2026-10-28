@@ -28,7 +28,36 @@ export type TPage = {
   workspace: string | undefined;
   logo_props: TLogoProps | undefined;
   deleted_at: Date | undefined;
+  folder?: string | null;
+  tags?: string[];
 } & TPageExtended;
+
+export type TPageFolder = {
+  id: string;
+  name: string;
+  parent: string | null;
+  project: string;
+  workspace: string;
+  logo_props: TLogoProps | undefined;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export type TPageFolderDeletionScope = {
+  folder_count: number;
+  page_count: number;
+  others_page_count: number;
+};
+
+export type TPageListLayout = "list" | "grid";
+
+export type TPageTagSummary = {
+  name: string;
+  page_count: number;
+};
 
 // page filters
 export type TPageNavigationTabs = "public" | "private" | "archived";
@@ -42,6 +71,7 @@ export type TPageFilterProps = {
   created_by?: string[] | null;
   favorites?: boolean;
   labels?: string[] | null;
+  tags?: string[] | null;
 };
 
 export type TPageFilters = {

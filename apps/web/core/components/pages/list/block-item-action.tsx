@@ -5,7 +5,8 @@
  */
 
 import { observer } from "mobx-react";
-import { Earth, Info, Minus } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Earth, FolderInput, Info, Minus } from "lucide-react";
 // plane imports
 import { LockIcon } from "@plane/propel/icons";
 import { Tooltip } from "@plane/propel/tooltip";
@@ -20,15 +21,31 @@ import type { EPageStoreType } from "@/plane-web/hooks/store";
 import type { TPageInstance } from "@/store/pages/base-page";
 // local imports
 import { PageActions } from "../dropdowns";
+import { PageTags } from "../tags/page-tags";
+import type { TPageActions } from "../dropdowns";
+
+export const PAGE_LIST_ACTIONS_ORDER: TPageActions[] = [
+  "open-in-new-tab",
+  "copy-link",
+  "make-a-copy",
+  "move-to-folder",
+  "toggle-lock",
+  "toggle-access",
+  "archive-restore",
+  "delete",
+];
 
 type Props = {
   page: TPageInstance;
   parentRef: React.RefObject<HTMLElement>;
   storeType: EPageStoreType;
+  onMoveToFolder?: () => void;
 };
 
 export const BlockItemAction = observer(function BlockItemAction(props: Props) {
-  const { page, parentRef, storeType } = props;
+  const { page, parentRef, storeType, onMoveToFolder } = props;
+  // router
+  const { projectId } = useParams();
   // store hooks
   const { getUserDetails } = useMember();
   // page operations
@@ -36,11 +53,13 @@ export const BlockItemAction = observer(function BlockItemAction(props: Props) {
     page,
   });
   // derived values
-  const { access, created_at, is_favorite, owned_by, canCurrentUserFavoritePage } = page;
+  const { access, created_at, is_favorite, owned_by, canCurrentUserFavoritePage, canCurrentUserEditPage } = page;
   const ownerDetails = owned_by ? getUserDetails(owned_by) : undefined;
 
   return (
     <>
+      {/* tags */}
+      <PageTags page={page} projectId={projectId?.toString() ?? ""} storeType={storeType} />
       {/* page details */}
       <div className="cursor-default">
         <Tooltip tooltipHeading="Owned by" tooltipContent={ownerDetails?.display_name}>
@@ -76,15 +95,20 @@ export const BlockItemAction = observer(function BlockItemAction(props: Props) {
 
       {/* quick actions dropdown */}
       <PageActions
-        optionsOrder={[
-          "open-in-new-tab",
-          "copy-link",
-          "make-a-copy",
-          "toggle-lock",
-          "toggle-access",
-          "archive-restore",
-          "delete",
-        ]}
+        optionsOrder={PAGE_LIST_ACTIONS_ORDER}
+        extraOptions={
+          onMoveToFolder
+            ? [
+                {
+                  key: "move-to-folder",
+                  action: onMoveToFolder,
+                  title: "Move to folder",
+                  icon: FolderInput,
+                  shouldRender: canCurrentUserEditPage,
+                },
+              ]
+            : undefined
+        }
         page={page}
         parentRef={parentRef}
         storeType={storeType}

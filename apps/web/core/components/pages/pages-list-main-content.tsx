@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { EUserPermissionsLevel, EPageAccess } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { EmptyStateDetailed } from "@plane/propel/empty-state";
@@ -25,10 +25,11 @@ type Props = {
   children: React.ReactNode;
   pageType: TPageNavigationTabs;
   storeType: EPageStoreType;
+  isFoldersLoading?: boolean;
 };
 
 export const PagesListMainContent = observer(function PagesListMainContent(props: Props) {
-  const { children, pageType, storeType } = props;
+  const { children, pageType, storeType, isFoldersLoading = false } = props;
   // plane hooks
   const { t } = useTranslation();
   // store hooks
@@ -42,6 +43,7 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
   // router
   const router = useRouter();
   const { workspaceSlug } = useParams();
+  const searchParams = useSearchParams();
   // derived values
   const pageIds = getCurrentProjectPageIdsByTab(pageType);
   const filteredPageIds = getCurrentProjectFilteredPageIdsByTab(pageType);
@@ -56,12 +58,13 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
 
     const payload: Partial<TPage> = {
       access: pageType === "private" ? EPageAccess.PRIVATE : EPageAccess.PUBLIC,
+      folder: searchParams.get("folder"),
     };
 
     await createPage(payload)
       .then((res) => {
         const pageId = `/${workspaceSlug}/projects/${currentProjectDetails?.id}/pages/${res?.id}`;
-        router.push(pageId);
+        return router.push(pageId);
       })
       .catch((err) => {
         setToast({
@@ -73,7 +76,9 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
       .finally(() => setIsCreatingPage(false));
   };
 
-  if (loader === "init-loader") return <PageLoader />;
+  if (loader === "init-loader" || isFoldersLoading) return <PageLoader />;
+  // public/private render the folder browser, which has its own empty states and folder controls
+  if (pageType !== "archived") return <div className="h-full w-full overflow-hidden">{children}</div>;
   // if no pages exist in the active page type
   if (!isAnyPageAvailable || pageIds?.length === 0) {
     if (!isAnyPageAvailable) {
@@ -95,42 +100,6 @@ export const PagesListMainContent = observer(function PagesListMainContent(props
         />
       );
     }
-    if (pageType === "public")
-      return (
-        <EmptyStateDetailed
-          assetKey="page"
-          title={t("project_empty_state.pages.title")}
-          description={t("project_empty_state.pages.description")}
-          actions={[
-            {
-              label: t("project_empty_state.pages.cta_primary"),
-              onClick: () => {
-                handleCreatePage();
-              },
-              variant: "primary",
-              disabled: !canPerformEmptyStateActions || isCreatingPage,
-            },
-          ]}
-        />
-      );
-    if (pageType === "private")
-      return (
-        <EmptyStateDetailed
-          assetKey="page"
-          title={t("project_empty_state.pages.title")}
-          description={t("project_empty_state.pages.description")}
-          actions={[
-            {
-              label: t("project_empty_state.pages.cta_primary"),
-              onClick: () => {
-                handleCreatePage();
-              },
-              variant: "primary",
-              disabled: !canPerformEmptyStateActions || isCreatingPage,
-            },
-          ]}
-        />
-      );
     if (pageType === "archived")
       return (
         <EmptyStateDetailed

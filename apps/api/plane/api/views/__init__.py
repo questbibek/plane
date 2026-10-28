@@ -70,3 +70,12 @@ from .custom_field import (
     CustomFieldValueListCreateAPIEndpoint,
     CustomFieldValueDetailAPIEndpoint,
 )
+
+from .page import (
+    PageListCreateAPIEndpoint,
+    PageDetailAPIEndpoint,
+    PageArchiveUnarchiveAPIEndpoint,
+    PageFolderListCreateAPIEndpoint,
+    PageFolderDetailAPIEndpoint,
+    PageTagAPIEndpoint,
+)
