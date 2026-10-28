@@ -4,21 +4,26 @@
  * See the LICENSE file for details.
  */
 
+import { useState } from "react";
 import { observer } from "mobx-react";
 
 // plane internal packages
 import { WEB_BASE_URL } from "@plane/constants";
-import { NewTabIcon } from "@plane/propel/icons";
+import { NewTabIcon, TrashIcon } from "@plane/propel/icons";
 import { Tooltip } from "@plane/propel/tooltip";
 import { getFileURL } from "@plane/utils";
 // hooks
 import { useWorkspace } from "@/hooks/store";
+// local imports
+import { DeleteWorkspaceModal } from "./delete-workspace-modal";
 
 type TWorkspaceListItemProps = {
   workspaceId: string;
 };
 
 export const WorkspaceListItem = observer(function WorkspaceListItem({ workspaceId }: TWorkspaceListItemProps) {
+  // states
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // store hooks
   const { getWorkspaceById } = useWorkspace();
   // derived values
@@ -26,14 +31,13 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
 
   if (!workspace) return null;
   return (
-    <a
-      key={workspaceId}
-      href={`${WEB_BASE_URL}/${encodeURIComponent(workspace.slug)}`}
-      target="_blank"
-      className="group flex items-center justify-between gap-2.5 truncate rounded-lg border border-subtle bg-layer-1 p-3 hover:border-subtle-1 hover:bg-layer-1-hover hover:shadow-raised-100"
-      rel="noreferrer"
-    >
-      <div className="flex items-start gap-4">
+    <div className="group relative flex items-center justify-between gap-2.5 truncate rounded-lg border border-subtle bg-layer-1 p-3 hover:border-subtle-1 hover:bg-layer-1-hover hover:shadow-raised-100">
+      <a
+        href={`${WEB_BASE_URL}/${encodeURIComponent(workspace.slug)}`}
+        target="_blank"
+        rel="noreferrer"
+        className="flex min-w-0 grow items-start gap-4"
+      >
         <span
           className={`relative mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center p-2 text-11 uppercase ${
             !workspace?.logo_url && "rounded-lg bg-accent-primary text-on-color"
@@ -80,10 +84,29 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
             )}
           </div>
         </div>
+      </a>
+      <div className="flex shrink-0 items-center gap-1">
+        <Tooltip tooltipContent="Delete workspace">
+          <button
+            type="button"
+            aria-label={`Delete workspace ${workspace.name}`}
+            onClick={() => setIsDeleteOpen(true)}
+            className="grid size-7 place-items-center rounded-sm text-placeholder hover:bg-danger-subtle hover:text-danger-primary"
+          >
+            <TrashIcon width={14} height={14} />
+          </button>
+        </Tooltip>
+        <a
+          href={`${WEB_BASE_URL}/${encodeURIComponent(workspace.slug)}`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open workspace ${workspace.name}`}
+          className="grid size-7 place-items-center rounded-sm text-placeholder hover:text-secondary"
+        >
+          <NewTabIcon width={14} height={16} />
+        </a>
       </div>
-      <div className="flex-shrink-0">
-        <NewTabIcon width={14} height={16} className="text-placeholder group-hover:text-secondary" />
-      </div>
-    </a>
+      <DeleteWorkspaceModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} workspace={workspace} />
+    </div>
   );
 });

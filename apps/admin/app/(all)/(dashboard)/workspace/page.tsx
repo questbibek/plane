@@ -65,9 +65,7 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
     });
 
     await updateConfigPromise
-      .then(() => {
-        setIsSubmitting(false);
-      })
+      .then(() => setIsSubmitting(false))
       .catch((err) => {
         console.error(err);
         setIsSubmitting(false);
@@ -125,8 +123,8 @@ const WorkspaceManagementPage = observer(function WorkspaceManagementPage(_props
                   )}
                 </div>
                 <div className={cn("text-11 leading-5 font-regular text-tertiary")}>
-                  You can&apos;t yet delete workspaces and you can only go to the workspace if you are an Admin or a
-                  Member.
+                  Deleting a workspace removes its projects and data for everyone. You can only open a workspace if you
+                  are an Admin or a Member of it.
                 </div>
               </div>
               <div className="flex items-center gap-2">

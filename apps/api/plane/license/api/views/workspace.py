@@ -11,7 +11,7 @@ from django.db.models import OuterRef, Func, F
 # Module imports
 from plane.app.views.base import BaseAPIView
 from plane.license.api.permissions import InstanceAdminPermission
-from plane.db.models import Workspace, WorkspaceMember, Project
+from plane.db.models import Profile, Workspace, WorkspaceMember, Project
 from plane.license.api.serializers import WorkspaceSerializer
 from plane.utils.constants import RESTRICTED_WORKSPACE_SLUGS
 
@@ -108,3 +108,27 @@ class InstanceWorkSpaceEndpoint(BaseAPIView):
                     {"slug": "The workspace with the slug already exists"},
                     status=status.HTTP_409_CONFLICT,
                 )
+
+
+class InstanceWorkSpaceDetailEndpoint(BaseAPIView):
+    permission_classes = [InstanceAdminPermission]
+
+    def delete(self, request, workspace_id):
+        """
+        Delete a workspace as the instance admin. The workspace's slug must be sent back in
+        `confirm_slug` so a stray request cannot remove the wrong workspace. Uses the same soft
+        delete as the in-app delete: the slug is freed and data is purged after HARD_DELETE_AFTER_DAYS.
+        """
+        workspace = Workspace.objects.filter(pk=workspace_id).first()
+        if workspace is None:
+            return Response({"error": "Workspace not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.data.get("confirm_slug") != workspace.slug:
+            return Response(
+                {"error": "Type the workspace slug exactly to confirm deletion"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        Profile.objects.filter(last_workspace_id=workspace.id).update(last_workspace_id=None)
+        workspace.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

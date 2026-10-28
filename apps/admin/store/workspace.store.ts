@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { set } from "lodash-es";
+import { set, unset } from "lodash-es";
 import { action, observable, runInAction, makeObservable, computed } from "mobx";
 // plane imports
 import { InstanceWorkspaceService } from "@plane/services";
@@ -27,6 +27,7 @@ export interface IWorkspaceStore {
   fetchNextWorkspaces: () => Promise<IWorkspace[]>;
   // curd actions
   createWorkspace: (data: IWorkspace) => Promise<IWorkspace>;
+  deleteWorkspace: (workspaceId: string, confirmSlug: string) => Promise<void>;
 }
 
 export class WorkspaceStore implements IWorkspaceStore {
@@ -53,6 +54,7 @@ export class WorkspaceStore implements IWorkspaceStore {
       fetchNextWorkspaces: action,
       // curd actions
       createWorkspace: action,
+      deleteWorkspace: action,
     });
     this.instanceWorkspaceService = new InstanceWorkspaceService();
   }
@@ -148,6 +150,26 @@ export class WorkspaceStore implements IWorkspaceStore {
       return workspace;
     } catch (error) {
       console.error("Error creating workspace", error);
+      throw error;
+    } finally {
+      this.loader = "loaded";
+    }
+  };
+
+  /**
+   * @description Deletes a workspace; the admin types its slug to confirm
+   * @param workspaceId - string
+   * @param confirmSlug - string
+   */
+  deleteWorkspace = async (workspaceId: string, confirmSlug: string): Promise<void> => {
+    try {
+      this.loader = "mutation";
+      await this.instanceWorkspaceService.destroy(workspaceId, confirmSlug);
+      runInAction(() => {
+        unset(this.workspaces, [workspaceId]);
+      });
+    } catch (error) {
+      console.error("Error deleting workspace", error);
       throw error;
     } finally {
       this.loader = "loaded";

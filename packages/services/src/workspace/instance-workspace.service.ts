@@ -68,4 +68,19 @@ export class InstanceWorkspaceService extends APIService {
         throw error?.response?.data;
       });
   }
+
+  /**
+   * Deletes a workspace as the instance admin
+   * @param {string} workspaceId - The workspace to delete
+   * @param {string} confirmSlug - The workspace slug, typed back by the admin to confirm
+   * @returns {Promise<void>}
+   * @throws {Error} If the API request fails
+   */
+  async destroy(workspaceId: string, confirmSlug: string): Promise<void> {
+    return this.delete(`/api/instances/workspaces/${workspaceId}/`, { confirm_slug: confirmSlug })
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
 }
