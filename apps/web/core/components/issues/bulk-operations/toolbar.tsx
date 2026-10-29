@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import { X } from "lucide-react";
 // plane imports
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { LabelPropertyIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TBulkIssueProperties } from "@plane/types";
 import { cn, renderFormattedPayloadDate } from "@plane/utils";
@@ -27,6 +28,7 @@ import type { TSelectionHelper } from "@/hooks/use-multiple-select";
 
 type Props = {
   className?: string;
+  floating?: boolean;
   selectedIssueIds: string[];
   selectionHelpers: TSelectionHelper;
 };
@@ -34,7 +36,7 @@ type Props = {
 const renderNotice = (message: string) => <p className="text-13 text-tertiary">{message}</p>;
 
 export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsToolbar(props: Props) {
-  const { className, selectedIssueIds, selectionHelpers } = props;
+  const { className, floating = false, selectedIssueIds, selectionHelpers } = props;
   // router
   const { workspaceSlug } = useParams();
   // states
@@ -84,8 +86,21 @@ export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsT
   };
 
   return (
-    <div className={cn("sticky bottom-0 left-0 z-2 px-3.5 pb-3", className)}>
-      <div className="flex min-h-12 w-full flex-wrap items-center gap-2 rounded-md border border-subtle bg-surface-1 px-3 py-2 shadow-raised-200">
+    // floating: the table's sticky cells would otherwise paint over the bar and the menus it opens
+    <div
+      className={cn(
+        floating
+          ? "pointer-events-none fixed inset-x-0 bottom-6 z-20 flex justify-center px-4"
+          : "sticky bottom-0 left-0 z-2 px-3.5 pb-3",
+        className
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2 rounded-md border border-subtle bg-surface-1 px-3 py-2 shadow-raised-200",
+          floating ? "pointer-events-auto max-w-full rounded-lg border-strong" : "min-h-12 w-full"
+        )}
+      >
         <div className="flex items-center gap-1.5 pr-2">
           <span className="text-13 font-medium text-primary">{count} selected</span>
           <button
@@ -110,6 +125,7 @@ export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsT
                 onChange={(stateId) => void handleUpdate({ state_id: stateId }, "State changed")}
                 projectId={projectId}
                 buttonVariant="border-with-text"
+                placement="top-start"
                 placeholder="State"
                 showDefaultState={false}
               />
@@ -119,6 +135,7 @@ export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsT
                 value={null}
                 onChange={(priority) => void handleUpdate({ priority }, "Priority changed")}
                 buttonVariant="border-with-text"
+                placement="top-start"
                 placeholder="Priority"
               />
             </div>
@@ -131,6 +148,7 @@ export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsT
                 }}
                 projectId={projectId}
                 buttonVariant="border-with-text"
+                placement="top-start"
                 placeholder="Add assignee"
               />
             </div>
@@ -141,7 +159,13 @@ export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsT
                   if (labelIds.length) void handleUpdate({ label_ids: labelIds }, "Label added");
                 }}
                 projectId={projectId}
-                label={<span className="text-11">Add label</span>}
+                placement="top-start"
+                label={
+                  <span className="flex h-full items-center gap-1 rounded-sm border-[0.5px] border-strong px-2 text-11 hover:bg-layer-1">
+                    <LabelPropertyIcon className="size-3 shrink-0" />
+                    Add label
+                  </span>
+                }
               />
             </div>
             <div className="h-7">
@@ -154,6 +178,7 @@ export const IssueBulkOperationsToolbar = observer(function IssueBulkOperationsT
                   )
                 }
                 buttonVariant="border-with-text"
+                placement="top-start"
                 placeholder="Due date"
               />
             </div>

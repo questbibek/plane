@@ -121,7 +121,7 @@ export const SpreadsheetView = observer(function SpreadsheetView(props: Props) {
                 )}
               </div>
             </div>
-            <IssueBulkOperationsRoot selectionHelpers={helpers} />
+            <IssueBulkOperationsRoot selectionHelpers={helpers} floating />
           </>
         )}
       </MultipleSelectGroup>

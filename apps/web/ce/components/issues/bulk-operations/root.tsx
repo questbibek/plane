@@ -18,11 +18,13 @@ const UNSUPPORTED_STORES = new Set([EIssuesStoreType.ARCHIVED, EIssuesStoreType.
 
 type Props = {
   className?: string;
+  /** float over the page instead of sitting under the layout (needed where sticky cells overlap it) */
+  floating?: boolean;
   selectionHelpers: TSelectionHelper;
 };
 
 export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot(props: Props) {
-  const { className, selectionHelpers } = props;
+  const { className, floating, selectionHelpers } = props;
   // store hooks
   const { isSelectionActive, selectedEntityIds } = useMultipleSelectStore();
   const storeType = useIssueStoreType();
@@ -32,6 +34,7 @@ export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot
   return (
     <IssueBulkOperationsToolbar
       className={className}
+      floating={floating}
       selectedIssueIds={selectedEntityIds}
       selectionHelpers={selectionHelpers}
     />
