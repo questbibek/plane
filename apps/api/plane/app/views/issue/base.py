@@ -785,6 +785,104 @@ class BulkDeleteIssuesEndpoint(BaseAPIView):
         )
 
 
+class BulkIssueOperationsEndpoint(BaseAPIView):
+    """Apply the same property change to many work items at once."""
+
+    # label_ids and assignee_ids are added to what each item already has
+    ALLOWED_PROPERTIES = {"state_id", "priority", "start_date", "target_date", "label_ids", "assignee_ids"}
+    APPENDED_PROPERTIES = {"label_ids", "assignee_ids"}
+
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
+    def post(self, request, slug, project_id):
+        issue_ids = request.data.get("issue_ids", [])
+        properties = request.data.get("properties", {})
+
+        if not issue_ids:
+            return Response({"error": "Issue IDs are required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(properties, dict) or not properties:
+            return Response({"error": "Properties are required"}, status=status.HTTP_400_BAD_REQUEST)
+        unsupported = set(properties) - self.ALLOWED_PROPERTIES
+        if unsupported:
+            return Response(
+                {"error": f"Unsupported properties: {', '.join(sorted(unsupported))}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        issues = list(
+            Issue.issue_objects.filter(workspace__slug=slug, project_id=project_id, pk__in=issue_ids).annotate(
+                label_ids=Coalesce(
+                    ArrayAgg(
+                        "labels__id",
+                        distinct=True,
+                        filter=Q(~Q(labels__id__isnull=True) & Q(label_issue__deleted_at__isnull=True)),
+                    ),
+                    Value([], output_field=ArrayField(UUIDField())),
+                ),
+                assignee_ids=Coalesce(
+                    ArrayAgg(
+                        "assignees__id",
+                        distinct=True,
+                        filter=Q(~Q(assignees__id__isnull=True) & Q(issue_assignee__deleted_at__isnull=True)),
+                    ),
+                    Value([], output_field=ArrayField(UUIDField())),
+                ),
+            )
+        )
+        if not issues:
+            return Response({"error": "No matching work items found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # validate once against the first item so a bad value fails the whole request, not half of it
+        first = issues[0]
+        probe = IssueCreateSerializer(
+            first,
+            data=self._payload_for(first, properties),
+            partial=True,
+            context={"project_id": project_id},
+        )
+        if not probe.is_valid():
+            return Response(probe.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        epoch = int(timezone.now().timestamp())
+        origin = base_host(request=request, is_app=True)
+        for issue in issues:
+            payload = self._payload_for(issue, properties)
+            current_instance = json.dumps(
+                {
+                    "state_id": issue.state_id,
+                    "priority": issue.priority,
+                    "start_date": issue.start_date,
+                    "target_date": issue.target_date,
+                    "label_ids": issue.label_ids,
+                    "assignee_ids": issue.assignee_ids,
+                },
+                cls=DjangoJSONEncoder,
+            )
+            serializer = IssueCreateSerializer(issue, data=payload, partial=True, context={"project_id": project_id})
+            if not serializer.is_valid():
+                continue
+            serializer.save()
+            issue_activity.delay(
+                type="issue.activity.updated",
+                requested_data=json.dumps(payload, cls=DjangoJSONEncoder),
+                actor_id=str(request.user.id),
+                issue_id=str(issue.id),
+                project_id=str(project_id),
+                current_instance=current_instance,
+                epoch=epoch,
+                notification=True,
+                origin=origin,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _payload_for(self, issue, properties):
+        payload = dict(properties)
+        for key in self.APPENDED_PROPERTIES & set(properties):
+            existing = [str(value) for value in getattr(issue, key, [])]
+            payload[key] = list(dict.fromkeys(existing + [str(value) for value in properties[key] or []]))
+        return payload
+
+
 class DeletedIssuesListViewSet(BaseAPIView):
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def get(self, request, slug, project_id):

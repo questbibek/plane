@@ -5,11 +5,16 @@
  */
 
 import { observer } from "mobx-react";
+import { EIssuesStoreType } from "@plane/types";
 // components
-import { BulkOperationsUpgradeBanner } from "@/components/issues/bulk-operations/upgrade-banner";
+import { IssueBulkOperationsToolbar } from "@/components/issues/bulk-operations/toolbar";
 // hooks
 import { useMultipleSelectStore } from "@/hooks/store/use-multiple-select-store";
+import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import type { TSelectionHelper } from "@/hooks/use-multiple-select";
+
+// archived and draft items are not served by the bulk endpoint
+const UNSUPPORTED_STORES = new Set([EIssuesStoreType.ARCHIVED, EIssuesStoreType.WORKSPACE_DRAFT]);
 
 type Props = {
   className?: string;
@@ -19,9 +24,16 @@ type Props = {
 export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot(props: Props) {
   const { className, selectionHelpers } = props;
   // store hooks
-  const { isSelectionActive } = useMultipleSelectStore();
+  const { isSelectionActive, selectedEntityIds } = useMultipleSelectStore();
+  const storeType = useIssueStoreType();
 
-  if (!isSelectionActive || selectionHelpers.isSelectionDisabled) return null;
+  if (!isSelectionActive || selectionHelpers.isSelectionDisabled || UNSUPPORTED_STORES.has(storeType)) return null;
 
-  return <BulkOperationsUpgradeBanner className={className} />;
+  return (
+    <IssueBulkOperationsToolbar
+      className={className}
+      selectedIssueIds={selectedEntityIds}
+      selectionHelpers={selectionHelpers}
+    />
+  );
 });

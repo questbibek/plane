@@ -6,6 +6,7 @@ from django.urls import path
 
 from plane.app.views import (
     ProjectViewSet,
+    ProjectSummaryEndpoint,
     DeployBoardViewSet,
     ProjectInvitationsViewset,
     ProjectMemberViewSet,
@@ -22,6 +23,11 @@ from plane.app.views import (
 
 
 urlpatterns = [
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/summary/",
+        ProjectSummaryEndpoint.as_view(),
+        name="project-summary-overview",
+    ),
     path(
         "workspaces/<str:slug>/projects/",
         ProjectViewSet.as_view({"get": "list", "post": "create"}),
