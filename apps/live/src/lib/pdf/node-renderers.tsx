@@ -325,6 +325,21 @@ export const nodeRenderers: NodeRendererRegistry = {
     );
   },
 
+  // audio can't play in a PDF, so name it and give its length
+  voiceNote: (node: TipTapNode, _children: ReactElement[], ctx: PDFRenderContext): ReactElement => {
+    const seconds = Math.floor(Number(node.attrs?.duration) || 0);
+    const length = seconds > 0 ? ` (${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")})` : "";
+    const recordedBy = (node.attrs?.recorded_by as string) || "";
+    return (
+      <View key={ctx.getKey()} style={pdfStyles.imagePlaceholder}>
+        <Text style={pdfStyles.imagePlaceholderText}>
+          Voice note{length}
+          {recordedBy ? ` · ${recordedBy}` : ""}
+        </Text>
+      </View>
+    );
+  },
+
   calloutComponent: (node: TipTapNode, children: ReactElement[], ctx: PDFRenderContext): ReactElement => {
     const backgroundKey = (node.attrs?.["data-background"] as string) || "gray";
     const backgroundColor =

@@ -6,7 +6,9 @@
 
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { AnyExtension } from "@tiptap/core";
+import { Mic } from "lucide-react";
 import { SlashCommands } from "@/extensions";
+import { VoiceNoteExtension } from "@/extensions/voice-note";
 // types
 import type { IEditorProps, TExtensions, TUserDetails } from "@/types";
 
@@ -28,7 +30,28 @@ const extensionRegistry: TDocumentEditorAdditionalExtensionsRegistry[] = [
   {
     isEnabled: (disabledExtensions) => !disabledExtensions.includes("slash-commands"),
     getExtension: ({ disabledExtensions, flaggedExtensions }) =>
-      SlashCommands({ disabledExtensions, flaggedExtensions }),
+      SlashCommands({
+        disabledExtensions,
+        flaggedExtensions,
+        // voice notes are a pages-only block, so the command is added here rather than in the shared list
+        additionalOptions: [
+          {
+            commandKey: "voice-note",
+            key: "voice-note",
+            title: "Voice note",
+            description: "Record or upload audio",
+            searchTerms: ["audio", "record", "voice", "mic", "microphone", "sound"],
+            icon: <Mic className="size-3.5" />,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertVoiceNote().run(),
+            section: "general",
+            pushAfter: "image",
+          },
+        ],
+      }),
+  },
+  {
+    isEnabled: () => true,
+    getExtension: ({ fileHandler, userDetails }) => VoiceNoteExtension({ fileHandler, userName: userDetails.name }),
   },
 ];
 

@@ -136,11 +136,15 @@ def copy_s3_objects_of_description_and_assets(entity_name, entity_identifier, pr
             raise ValueError(f"Unsupported entity_name: {entity_name}")
 
         entity = model_class.objects.get(id=entity_identifier)
-        asset_ids = extract_asset_ids(entity.description_html, "image-component")
+        # images and voice notes both reference their file by asset id in `src`
+        asset_tags = ["image-component", "voice-note-component"]
+        asset_ids = [asset_id for tag in asset_tags for asset_id in extract_asset_ids(entity.description_html, tag)]
 
         duplicated_assets = copy_assets(entity, entity_identifier, project_id, asset_ids, user_id)
 
-        updated_html = update_description(entity, duplicated_assets, "image-component")
+        updated_html = entity.description_html
+        for tag in asset_tags:
+            updated_html = update_description(entity, duplicated_assets, tag)
 
         external_data = sync_with_external_service(entity_name, updated_html)
 

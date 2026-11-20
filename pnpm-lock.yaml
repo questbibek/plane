@@ -27,6 +27,9 @@ catalogs:
     '@bprogress/core':
       specifier: ^1.3.4
       version: 1.3.4
+    '@breezystack/lamejs':
+      specifier: 1.2.7
+      version: 1.2.7
     '@chromatic-com/storybook':
       specifier: ^1.4.0
       version: 1.9.0
@@ -1306,6 +1309,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@breezystack/lamejs':
+        specifier: 'catalog:'
+        version: 1.2.7
       '@floating-ui/dom':
         specifier: 'catalog:'
         version: 1.7.4
@@ -2275,6 +2281,9 @@ packages:
 
   '@bprogress/core@1.3.4':
     resolution: {integrity: sha512-q/AqpurI/1uJzOrQROuZWixn/+ARekh+uvJGwLCP6HQ/EqAX4SkvNf618tSBxL4NysC0MwqAppb/mRw6Tzi61w==}
+
+  '@breezystack/lamejs@1.2.7':
+    resolution: {integrity: sha512-6wc7ck65ctA75Hq7FYHTtTvGnYs6msgdxiSUICQ+A01nVOWg6rqouZB8IdyteRlfpYYiFovkf67dIeOgWIUzTA==}
 
   '@chromatic-com/storybook@1.9.0':
     resolution: {integrity: sha512-vYQ+TcfktEE3GHnLZXHCzXF/sN9dw+KivH8a5cmPyd9YtQs7fZtHrEgsIjWpYycXiweKMo1Lm1RZsjxk8DH3rA==}
@@ -10223,6 +10232,8 @@ snapshots:
   '@borewit/text-codec@0.1.1': {}
 
   '@bprogress/core@1.3.4': {}
+
+  '@breezystack/lamejs@1.2.7': {}
 
   '@chromatic-com/storybook@1.9.0(react@18.3.1)':
     dependencies:

@@ -75,6 +75,7 @@ CUSTOM_TAGS = {
     "label",
     "input",
     "image-component",
+    "voice-note-component",
 }
 ALLOWED_TAGS = nh3.ALLOWED_TAGS | CUSTOM_TAGS
 
@@ -122,6 +123,16 @@ ATTRIBUTES = {
         "src",
         "alignment",
         "status",
+    },
+    "voice-note-component": {
+        "id",
+        "src",
+        "status",
+        "duration",
+        "peaks",
+        "file_name",
+        "recorded_by",
+        "recorded_at",
     },
     "img": {
         "width",

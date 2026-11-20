@@ -26,6 +26,27 @@ from plane.utils.path_validator import sanitize_filename
 from plane.bgtasks.storage_metadata_task import get_asset_object_metadata
 from plane.throttles.asset import AssetRateThrottle
 
+# audio a page voice note may hold, as the browser detects it from the file's bytes
+# (recordings are MP3; uploads can be any common format, and WebM audio sniffs as video/webm)
+VOICE_NOTE_MIME_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/mp4",
+    "audio/x-m4a",
+    "audio/m4a",
+    "audio/aac",
+    "audio/x-aac",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/vnd.wave",
+    "audio/ogg",
+    "audio/opus",
+    "audio/webm",
+    "video/webm",
+    "audio/flac",
+    "audio/x-flac",
+}
+
 
 class UserAssetsV2Endpoint(BaseAPIView):
     """This endpoint is used to upload user profile images."""
@@ -529,6 +550,9 @@ class ProjectAssetEndpoint(BaseAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # pages also take voice notes, which have no size cap
+        is_voice_note = entity_type == FileAsset.EntityTypeContext.PAGE_DESCRIPTION and type in VOICE_NOTE_MIME_TYPES
+
         # Check if the file type is allowed
         allowed_types = [
             "image/jpeg",
@@ -537,7 +561,7 @@ class ProjectAssetEndpoint(BaseAPIView):
             "image/jpg",
             "image/gif",
         ]
-        if type not in allowed_types:
+        if type not in allowed_types and not is_voice_note:
             return Response(
                 {
                     "error": "Invalid file type. Only JPEG, PNG, WebP, JPG and GIF files are allowed.",
@@ -547,7 +571,7 @@ class ProjectAssetEndpoint(BaseAPIView):
             )
 
         # Get the size limit
-        size_limit = min(settings.FILE_SIZE_LIMIT, size)
+        size_limit = size if is_voice_note else min(settings.FILE_SIZE_LIMIT, size)
 
         # Get the workspace
         workspace = Workspace.objects.get(slug=slug)

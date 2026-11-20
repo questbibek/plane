@@ -66,6 +66,7 @@ export type TEditorCommands =
   | "attachment"
   | "emoji"
   | "external-embed"
+  | "voice-note"
   | TExtendedEditorCommands;
 
 export type TCommandExtraProps = {
