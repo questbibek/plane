@@ -7,9 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import status
 
 from plane.bgtasks.copy_s3_object import copy_s3_objects_of_description_and_assets
+from plane.bgtasks.file_asset_task import delete_page_voice_notes
 from plane.db.models import FileAsset, Page, Project, ProjectMember, ProjectPage
 from plane.utils.content_validator import validate_html_content
 
@@ -109,3 +111,52 @@ class TestVoiceNoteHtml:
         page.refresh_from_db()
         copy = FileAsset.objects.exclude(id=original.id).get(page=page)
         assert f'src="{copy.id}"' in page.description_html
+
+
+def make_asset(page, project, workspace, name, mime):
+    return FileAsset.objects.create(
+        page=page,
+        workspace=workspace,
+        project=project,
+        asset=f"{workspace.id}/{name}",
+        attributes={"name": name, "size": 100, "type": mime},
+        entity_type="PAGE_DESCRIPTION",
+        is_uploaded=True,
+    )
+
+
+@pytest.mark.contract
+class TestVoiceNoteCleanup:
+    @pytest.mark.django_db
+    @patch("plane.bgtasks.file_asset_task.S3Storage")
+    def test_deleting_a_page_removes_its_voice_notes(
+        self, mock_storage, session_client, workspace, project, page, django_capture_on_commit_callbacks
+    ):
+        voice = make_asset(page, project, workspace, "note.mp3", "audio/mpeg")
+        image = make_asset(page, project, workspace, "shot.png", "image/png")
+        Page.objects.filter(pk=page.pk).update(archived_at=timezone.localdate())
+        mock_storage.return_value.delete_files.return_value = True
+
+        # run the queued task for real instead of the patched .delay
+        with patch("plane.bgtasks.file_asset_task.delete_page_voice_notes.delay") as delay:
+            delay.side_effect = lambda page_ids: delete_page_voice_notes(page_ids)
+            with django_capture_on_commit_callbacks(execute=True):
+                response = session_client.delete(
+                    f"/api/workspaces/{workspace.slug}/projects/{project.id}/pages/{page.id}/"
+                )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        mock_storage.return_value.delete_files.assert_called_once_with([voice.asset.name])
+        assert not FileAsset.all_objects.filter(id=voice.id).exists()
+        # images are left alone
+        assert FileAsset.all_objects.filter(id=image.id).exists()
+
+    @pytest.mark.django_db
+    @patch("plane.bgtasks.file_asset_task.S3Storage")
+    def test_records_are_kept_when_storage_refuses(self, mock_storage, workspace, project, page):
+        voice = make_asset(page, project, workspace, "note.mp3", "audio/mpeg")
+        mock_storage.return_value.delete_files.return_value = False
+
+        delete_page_voice_notes([str(page.id)])
+
+        assert FileAsset.all_objects.filter(id=voice.id).exists()

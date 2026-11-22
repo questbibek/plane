@@ -25,27 +25,7 @@ from plane.utils.cache import invalidate_cache_directly
 from plane.utils.path_validator import sanitize_filename
 from plane.bgtasks.storage_metadata_task import get_asset_object_metadata
 from plane.throttles.asset import AssetRateThrottle
-
-# audio a page voice note may hold, as the browser detects it from the file's bytes
-# (recordings are MP3; uploads can be any common format, and WebM audio sniffs as video/webm)
-VOICE_NOTE_MIME_TYPES = {
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/mp4",
-    "audio/x-m4a",
-    "audio/m4a",
-    "audio/aac",
-    "audio/x-aac",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/vnd.wave",
-    "audio/ogg",
-    "audio/opus",
-    "audio/webm",
-    "video/webm",
-    "audio/flac",
-    "audio/x-flac",
-}
+from plane.utils.voice_notes import VOICE_NOTE_MIME_TYPES
 
 
 class UserAssetsV2Endpoint(BaseAPIView):

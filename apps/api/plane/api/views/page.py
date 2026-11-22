@@ -32,6 +32,7 @@ from plane.db.models import (
 )
 from plane.db.models.page import normalize_page_tags
 from plane.utils.page_tags import get_project_tag_counts, pages_with_tag, replace_project_tag
+from plane.utils.voice_notes import schedule_voice_note_cleanup
 from plane.utils.page_folders import (
     delete_folder,
     get_descendant_page_ids,
@@ -266,6 +267,7 @@ class PageDetailAPIEndpoint(ProjectPageQuerysetMixin, BaseAPIView):
 
         Page.objects.filter(parent_id=page_id, projects__id=project_id, workspace__slug=slug).update(parent=None)
         page.delete()
+        schedule_voice_note_cleanup([page_id])
         UserFavorite.objects.filter(
             project=project_id, workspace__slug=slug, entity_identifier=page_id, entity_type="page"
         ).delete()
