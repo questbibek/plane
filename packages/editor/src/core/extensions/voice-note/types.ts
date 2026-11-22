@@ -40,6 +40,7 @@ export type TVoiceNoteAttributes = {
 export type TVoiceNoteFileHandlers = {
   getAudioSource: (assetId: string) => Promise<string>;
   getAudioDownloadSource: (assetId: string) => Promise<string>;
+  restoreAudio: (assetId: string) => Promise<void>;
   uploadAudio?: (blockId: string, file: File) => Promise<string>;
   getUploadProgress: (blockId: string) => number | undefined;
 };
@@ -52,4 +53,6 @@ export type TVoiceNoteExtensionOptions = TVoiceNoteFileHandlers & {
 export type TVoiceNoteExtensionStorage = {
   /** blocks inserted in this editor session; only these show the recorder, others see a placeholder */
   ownedBlockIds: Set<string>;
+  /** asset id => whether its block was removed; read by the editor's file deletion/restore tracking */
+  deletedVoiceNoteSet: Map<string, boolean>;
 };

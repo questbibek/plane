@@ -8,7 +8,7 @@ from django.db.models import Q
 
 # Module imports
 from plane.db.models import Page, PageFolder, UserFavorite, UserRecentVisit
-from plane.utils.voice_notes import schedule_voice_note_cleanup
+from plane.utils.page_assets import schedule_page_asset_cleanup
 
 
 def get_descendant_page_ids(page_ids):
@@ -89,5 +89,5 @@ def delete_folder(folder, user):
             soft=False
         )
         PageFolder.objects.filter(id__in=scope["folder_ids"]).delete()
-        schedule_voice_note_cleanup(scope["page_ids"])
+        schedule_page_asset_cleanup(scope["page_ids"])
     return scope

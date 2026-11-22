@@ -101,6 +101,7 @@ export enum CORE_EXTENSIONS {
   UTILITY = "utility",
   WORK_ITEM_EMBED = "issue-embed-component",
   EMOJI = "emoji",
+  VOICE_NOTE = "voiceNote",
 }
 
 export enum ADDITIONAL_EXTENSIONS {}

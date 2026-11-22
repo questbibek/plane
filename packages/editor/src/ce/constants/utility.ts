@@ -26,4 +26,8 @@ export const NODE_FILE_MAP: NodeFileMapType = {
   [CORE_EXTENSIONS.CUSTOM_IMAGE]: {
     fileSetName: "deletedImageSet",
   },
+  // a removed voice note's audio is marked deleted (and restored on undo) the same way as an image
+  [CORE_EXTENSIONS.VOICE_NOTE]: {
+    fileSetName: "deletedVoiceNoteSet",
+  },
 };

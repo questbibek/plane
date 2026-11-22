@@ -35,12 +35,25 @@ type Props = {
   recordedAt: string | null;
   getAudioSource: (assetId: string) => Promise<string>;
   getAudioDownloadSource: (assetId: string) => Promise<string>;
+  /** un-deletes the file on the server, for a note that came back after its file was marked deleted */
+  restoreAudio?: (assetId: string) => Promise<void>;
 };
 
 export function VoiceNotePlayer(props: Props) {
-  const { assetId, duration, peaks, fileName, recordedBy, recordedAt, getAudioSource, getAudioDownloadSource } = props;
+  const {
+    assetId,
+    duration,
+    peaks,
+    fileName,
+    recordedBy,
+    recordedAt,
+    getAudioSource,
+    getAudioDownloadSource,
+    restoreAudio,
+  } = props;
   // refs
   const audioRef = useRef<HTMLAudioElement>(null);
+  const hasTriedRestoreRef = useRef(false);
   // states
   const [src, setSrc] = useState<string>();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -114,6 +127,22 @@ export function VoiceNotePlayer(props: Props) {
       window.localStorage.setItem(RATE_STORAGE_KEY, String(next));
     } catch {
       // remembering the speed is only a convenience
+    }
+  };
+
+  // the file may be marked deleted (the block was removed, then brought back by someone else's undo):
+  // restore it once and load again before giving up
+  const handleLoadError = async () => {
+    if (!restoreAudio || hasTriedRestoreRef.current) {
+      setHasError(true);
+      return;
+    }
+    hasTriedRestoreRef.current = true;
+    try {
+      await restoreAudio(assetId);
+      audioRef.current?.load();
+    } catch {
+      setHasError(true);
     }
   };
 
@@ -264,7 +293,7 @@ export function VoiceNotePlayer(props: Props) {
             if (Number.isFinite(value)) setMediaDuration(value);
             event.currentTarget.playbackRate = rate;
           }}
-          onError={() => setHasError(true)}
+          onError={() => void handleLoadError()}
         />
       )}
     </div>

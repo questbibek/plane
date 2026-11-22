@@ -3,6 +3,7 @@
 # See the LICENSE file for details.
 
 import base64
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,7 +12,7 @@ from django.utils import timezone
 from rest_framework import status
 
 from plane.bgtasks.copy_s3_object import copy_s3_objects_of_description_and_assets
-from plane.bgtasks.file_asset_task import delete_page_voice_notes
+from plane.bgtasks.file_asset_task import delete_page_assets, purge_removed_page_assets
 from plane.db.models import FileAsset, Page, Project, ProjectMember, ProjectPage
 from plane.utils.content_validator import validate_html_content
 
@@ -126,30 +127,33 @@ def make_asset(page, project, workspace, name, mime):
 
 
 @pytest.mark.contract
-class TestVoiceNoteCleanup:
+class TestPageAssetCleanup:
     @pytest.mark.django_db
     @patch("plane.bgtasks.file_asset_task.S3Storage")
-    def test_deleting_a_page_removes_its_voice_notes(
+    def test_deleting_a_page_removes_all_its_files(
         self, mock_storage, session_client, workspace, project, page, django_capture_on_commit_callbacks
     ):
         voice = make_asset(page, project, workspace, "note.mp3", "audio/mpeg")
         image = make_asset(page, project, workspace, "shot.png", "image/png")
+        other_page = Page.objects.create(name="Other", workspace=workspace, owned_by=page.owned_by)
+        kept = make_asset(other_page, project, workspace, "keep.png", "image/png")
         Page.objects.filter(pk=page.pk).update(archived_at=timezone.localdate())
         mock_storage.return_value.delete_files.return_value = True
 
         # run the queued task for real instead of the patched .delay
-        with patch("plane.bgtasks.file_asset_task.delete_page_voice_notes.delay") as delay:
-            delay.side_effect = lambda page_ids: delete_page_voice_notes(page_ids)
+        with patch("plane.bgtasks.file_asset_task.delete_page_assets.delay") as delay:
+            delay.side_effect = lambda page_ids: delete_page_assets(page_ids)
             with django_capture_on_commit_callbacks(execute=True):
                 response = session_client.delete(
                     f"/api/workspaces/{workspace.slug}/projects/{project.id}/pages/{page.id}/"
                 )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        mock_storage.return_value.delete_files.assert_called_once_with([voice.asset.name])
-        assert not FileAsset.all_objects.filter(id=voice.id).exists()
-        # images are left alone
-        assert FileAsset.all_objects.filter(id=image.id).exists()
+        deleted_keys = mock_storage.return_value.delete_files.call_args.args[0]
+        assert sorted(deleted_keys) == sorted([voice.asset.name, image.asset.name])
+        assert not FileAsset.all_objects.filter(id__in=[voice.id, image.id]).exists()
+        # another page's files are untouched
+        assert FileAsset.all_objects.filter(id=kept.id).exists()
 
     @pytest.mark.django_db
     @patch("plane.bgtasks.file_asset_task.S3Storage")
@@ -157,6 +161,44 @@ class TestVoiceNoteCleanup:
         voice = make_asset(page, project, workspace, "note.mp3", "audio/mpeg")
         mock_storage.return_value.delete_files.return_value = False
 
-        delete_page_voice_notes([str(page.id)])
+        delete_page_assets([str(page.id)])
 
         assert FileAsset.all_objects.filter(id=voice.id).exists()
+
+    @pytest.mark.django_db
+    @patch("plane.bgtasks.file_asset_task.S3Storage")
+    def test_purge_removes_files_of_blocks_removed_long_ago(self, mock_storage, workspace, project, page):
+        mock_storage.return_value.delete_files.return_value = True
+        old = make_asset(page, project, workspace, "old.mp3", "audio/mpeg")
+        recent = make_asset(page, project, workspace, "recent.png", "image/png")
+        live = make_asset(page, project, workspace, "live.mp3", "audio/mpeg")
+        FileAsset.all_objects.filter(id=old.id).update(is_deleted=True, deleted_at=timezone.now() - timedelta(days=8))
+        # removed yesterday: still within the undo window
+        FileAsset.all_objects.filter(id=recent.id).update(
+            is_deleted=True, deleted_at=timezone.now() - timedelta(days=1)
+        )
+
+        purge_removed_page_assets()
+
+        mock_storage.return_value.delete_files.assert_called_once_with([old.asset.name])
+        assert not FileAsset.all_objects.filter(id=old.id).exists()
+        assert FileAsset.all_objects.filter(id__in=[recent.id, live.id]).count() == 2
+
+    @pytest.mark.django_db
+    @patch("plane.bgtasks.file_asset_task.S3Storage")
+    def test_purge_keeps_files_the_page_still_uses(self, mock_storage, workspace, project, page):
+        mock_storage.return_value.delete_files.return_value = True
+        # the block came back via another person's undo, but the file stayed marked deleted
+        restored = make_asset(page, project, workspace, "back.mp3", "audio/mpeg")
+        FileAsset.all_objects.filter(id=restored.id).update(
+            is_deleted=True, deleted_at=timezone.now() - timedelta(days=30)
+        )
+        page.description_html = VOICE_NOTE_HTML.format(src=restored.id)
+        page.save()
+
+        purge_removed_page_assets()
+
+        mock_storage.return_value.delete_files.assert_not_called()
+        restored = FileAsset.all_objects.get(id=restored.id)
+        assert restored.is_deleted is False
+        assert restored.deleted_at is None

@@ -47,7 +47,7 @@ from plane.db.models import (
 )
 from plane.utils.error_codes import ERROR_CODES
 from plane.utils.page_folders import validate_page_folder
-from plane.utils.voice_notes import schedule_voice_note_cleanup
+from plane.utils.page_assets import schedule_page_asset_cleanup
 
 # Local imports
 from ..base import BaseAPIView, BaseViewSet
@@ -413,8 +413,8 @@ class PageViewSet(BaseViewSet):
         ).update(parent=None)
 
         page.delete()
-        # voice notes are removed from storage with the page so they stop taking space
-        schedule_voice_note_cleanup([page_id])
+        # the page's images and voice notes are removed from storage so they stop taking space
+        schedule_page_asset_cleanup([page_id])
         # Delete the user favorite page
         UserFavorite.objects.filter(
             project=project_id,

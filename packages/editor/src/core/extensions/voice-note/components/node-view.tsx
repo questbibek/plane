@@ -35,6 +35,7 @@ export function VoiceNoteNodeView(props: NodeViewProps) {
           recordedAt={attrs[EVoiceNoteAttributeNames.RECORDED_AT]}
           getAudioSource={options.getAudioSource}
           getAudioDownloadSource={options.getAudioDownloadSource}
+          restoreAudio={options.restoreAudio}
         />
       );
 

@@ -38,6 +38,7 @@ export function VoiceNoteExtension(props: Props) {
         userName,
         getAudioSource: fileHandler.getAssetSrc,
         getAudioDownloadSource: fileHandler.getAssetDownloadSrc,
+        restoreAudio: fileHandler.restore,
         uploadAudio: "upload" in fileHandler ? fileHandler.upload : undefined,
         getUploadProgress: (blockId: string) => fileHandler.assetsUploadStatus?.[blockId],
       };
@@ -47,6 +48,7 @@ export function VoiceNoteExtension(props: Props) {
       return {
         ...this.parent?.(),
         ownedBlockIds: new Set<string>(),
+        deletedVoiceNoteSet: new Map<string, boolean>(),
       };
     },
 
