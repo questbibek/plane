@@ -4,9 +4,10 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
+import useSWR from "swr";
 // plane imports
 import { useTranslation } from "@plane/i18n";
 import { Button, getButtonStyling } from "@plane/propel/button";
@@ -15,6 +16,7 @@ import type { IWorkspace } from "@plane/types";
 // assets
 import WorkspaceCreationDisabled from "@/app/assets/workspace/workspace-creation-disabled.png?url";
 // components
+import { LogoSpinner } from "@/components/common/logo-spinner";
 import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
 // hooks
 import { useUser, useUserProfile } from "@/hooks/store/user";
@@ -22,6 +24,10 @@ import { useInstance } from "@/hooks/store/use-instance";
 import { useAppRouter } from "@/hooks/use-app-router";
 // wrappers
 import { AuthenticationWrapper } from "@/lib/wrappers/authentication-wrapper";
+// services
+import { WorkspaceService } from "@/services/workspace.service";
+
+const workspaceService = new WorkspaceService();
 
 const CreateWorkspacePage = observer(function CreateWorkspacePage() {
   const { t } = useTranslation();
@@ -39,6 +45,17 @@ const CreateWorkspacePage = observer(function CreateWorkspacePage() {
   });
   // derived values
   const isWorkspaceCreationDisabled = config?.is_workspace_creation_disabled ?? false;
+  // people who already finished onboarding (e.g. removed from a workspace and invited back) are sent here when they
+  // have no workspace; take them to their pending invites instead of a create-or-give-up screen
+  const { data: invitations, isLoading: isInvitationsLoading } = useSWR(
+    currentUser?.id ? `CREATE_WORKSPACE_PENDING_INVITES_${currentUser.id}` : null,
+    () => workspaceService.userWorkspaceInvitations()
+  );
+  const hasPendingInvites = (invitations?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (hasPendingInvites) router.replace("/invitations");
+  }, [hasPendingInvites, router]);
 
   // methods
   const getMailtoHref = () => {
@@ -72,7 +89,11 @@ const CreateWorkspacePage = observer(function CreateWorkspacePage() {
           </div>
         </div>
         <div className="relative flex h-full justify-center px-8 pb-8 sm:w-10/12 sm:items-center sm:justify-start sm:p-0 sm:pr-[8.33%] md:w-9/12 lg:w-4/5">
-          {isWorkspaceCreationDisabled ? (
+          {isInvitationsLoading || hasPendingInvites ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <LogoSpinner />
+            </div>
+          ) : isWorkspaceCreationDisabled ? (
             <div className="flex h-full w-4/5 flex-col items-center justify-center gap-1 text-16 font-medium">
               <img
                 src={WorkspaceCreationDisabled}
