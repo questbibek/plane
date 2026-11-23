@@ -24,7 +24,7 @@ never conflict on a merge:
 | `apps/{web,admin,space}/public/vrit-white.png` | Wordmark for dark surfaces |
 | `apps/{web,admin,space}/public/vrit-blue.png` | Wordmark for the light theme |
 | `apps/{web,admin,space}/public/vrit-fav.png` | Favicon |
-| `apps/web/core/components/branding/VritBrand.tsx` | `<VritLogo>` + `<VritPoweredBy>` (theme-aware) |
+| `apps/web/components/branding/VritBrand.tsx` | `<VritLogo>` + `<VritPoweredBy>` (theme-aware) |
 
 Master copies of the three PNGs live in [brand-assets/](brand-assets/);
 re-distribute per frontend with:
@@ -44,7 +44,7 @@ conflict is obvious and a script can verify it survived:
 
 ## The brand component
 
-`apps/web/core/components/branding/VritBrand.tsx` exports:
+`apps/web/components/branding/VritBrand.tsx` exports:
 
 ```tsx
 // White wordmark reads on dark surfaces; blue reads on the light theme,
@@ -61,24 +61,24 @@ exactly the fenced block. **Confirm each path before editing — Plane's tree
 moves; grep if it has shifted.**
 
 ### 1. Auth / login wordmark  ✅
-- [x] `apps/web/core/components/auth-screens/header.tsx`
+- [x] `apps/web/components/auth-screens/header.tsx`
   Real login wordmark was `<PlaneLockup>` from `@plane/propel/icons`. Replaced
   with `<VritLogo className="h-5 w-auto" />` (fenced import + usage); page title
   suffix `" - Plane"` → `" - Vrit Tech"`.
 
 ### 2. Auth footer (customer-logo strip)  ✅
-- [x] `apps/web/core/components/auth-screens/footer.tsx`
+- [x] `apps/web/components/auth-screens/footer.tsx`
   Upstream rendered "Join 10,000+ teams building with Plane" + Zerodha/Sony/
   Dolby/Accenture logos (misleading on a Vrit deploy). Whole footer replaced
   with `<VritPoweredBy />`. Revert this file to restore upstream.
 
 ### 3. Auth subheaders  ✅
-- [x] `apps/web/core/components/account/auth-forms/auth-header.tsx`
+- [x] `apps/web/components/account/auth-forms/auth-header.tsx`
   "Welcome back to Plane." / "Create your Plane account." → "… Vrit Tech …"
   (trailing `/* VRIT BRANDING */`).
 
 ### 4. Favicons (one per frontend)  ✅
-- [x] `apps/web/app/root.tsx` (links array) **and** `apps/web/app/layout.tsx` (`<head>`)
+- [x] `apps/web/app/root.tsx` (links array and `<head>`; upstream moved the document head out of `layout.tsx`)
 - [x] `apps/admin/app/root.tsx`
 - [x] `apps/space/app/root.tsx`
   Fenced `/vrit-fav.png` entries added **first** in each links array so they win:
@@ -92,7 +92,7 @@ moves; grep if it has shifted.**
 ### 5. Name surfaces  ✅
 - [x] `packages/constants/src/metadata.ts` — `SITE_NAME`/`SITE_TITLE`/
   `TWITTER_USER_NAME`/`SPACE_SITE_*` → "Vrit Tech" (fenced).
-- [x] `apps/web/app/root.tsx` + `layout.tsx` — `APP_TITLE`/title/og:title,
+- [x] `apps/web/app/root.tsx` — `APP_TITLE`/title/og:title,
   `application-name`, og/twitter `image:alt` → "Vrit Tech".
 - [x] `apps/admin/app/root.tsx`, `apps/space/app/root.tsx` — `APP_TITLE`
   (+ space `APP_DESCRIPTION`) → "Vrit Tech".

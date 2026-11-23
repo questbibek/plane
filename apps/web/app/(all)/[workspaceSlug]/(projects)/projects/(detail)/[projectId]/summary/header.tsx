@@ -9,13 +9,14 @@ import { useParams } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
 // plane imports
 import { useTranslation } from "@plane/i18n";
-import { Breadcrumbs, Header } from "@plane/ui";
+import { Breadcrumbs } from "@plane/blocks/breadcrumb";
+import { Header } from "@plane/blocks/layout";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 // plane web imports
-import { CommonProjectBreadcrumbs } from "@/plane-web/components/breadcrumbs/common";
+import { CommonProjectBreadcrumbs } from "@/components/breadcrumbs/common";
 
 export const ProjectSummaryHeader = observer(function ProjectSummaryHeader() {
   const { workspaceSlug, projectId } = useParams();

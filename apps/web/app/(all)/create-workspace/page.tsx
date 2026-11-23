@@ -10,8 +10,8 @@ import Link from "next/link";
 import useSWR from "swr";
 // plane imports
 import { useTranslation } from "@plane/i18n";
-import { Button, getButtonStyling } from "@plane/propel/button";
-import { PlaneLogo } from "@plane/propel/icons";
+import { Button } from "@makeplane/propel/components/button";
+import { PlaneLogo } from "@plane/blocks/icons";
 import type { IWorkspace } from "@plane/types";
 // assets
 import WorkspaceCreationDisabled from "@/app/assets/workspace/workspace-creation-disabled.png?url";
@@ -56,6 +56,7 @@ const CreateWorkspacePage = observer(function CreateWorkspacePage() {
   useEffect(() => {
     if (hasPendingInvites) router.replace("/invitations");
   }, [hasPendingInvites, router]);
+  const requestAccessLabel = t("workspace_creation.errors.creation_disabled.request_button");
 
   // methods
   const getMailtoHref = () => {
@@ -84,7 +85,7 @@ const CreateWorkspacePage = observer(function CreateWorkspacePage() {
           >
             <PlaneLogo className="h-9 w-auto text-primary" />
           </Link>
-          <div className="absolute top-1/4 right-4 -translate-y-1/2 text-13 text-primary sm:fixed sm:top-12 sm:right-16 sm:translate-y-0 sm:py-5">
+          <div className="absolute top-1/4 right-4 -translate-y-1/2 text-body-xs-regular text-primary sm:fixed sm:top-12 sm:right-16 sm:translate-y-0 sm:py-5">
             {currentUser?.email}
           </div>
         </div>
@@ -94,31 +95,42 @@ const CreateWorkspacePage = observer(function CreateWorkspacePage() {
               <LogoSpinner />
             </div>
           ) : isWorkspaceCreationDisabled ? (
-            <div className="flex h-full w-4/5 flex-col items-center justify-center gap-1 text-16 font-medium">
+            <div className="flex h-full w-4/5 flex-col items-center justify-center gap-1 text-body-md-medium">
               <img
                 src={WorkspaceCreationDisabled}
                 className="mb-4 h-full w-full object-contain"
                 alt="Workspace creation disabled"
               />
-              <div className="text-center text-16 font-medium">
+              <div className="text-center text-body-md-medium">
                 {t("workspace_creation.errors.creation_disabled.title")}
               </div>
-              <p className="text-center text-13 break-words text-tertiary">
+              <p className="text-center text-body-xs-medium break-words text-tertiary">
                 {t("workspace_creation.errors.creation_disabled.description")}
               </p>
               <div className="mt-6 flex gap-4">
-                <Button variant="primary" onClick={() => router.back()}>
-                  {t("common.go_back")}
-                </Button>
-                <a href={getMailtoHref()} className={getButtonStyling("secondary", "base")}>
-                  {t("workspace_creation.errors.creation_disabled.request_button")}
-                </a>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  stretch="auto"
+                  label={t("common.go_back")}
+                  onClick={() => router.back()}
+                />
+                {/* Button chrome on a mailto link: the anchor carries the label as its own content (which
+                    takes precedence over Button's label slot) so it always has an accessible name. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  stretch="auto"
+                  nativeButton={false}
+                  render={<a href={getMailtoHref()}>{requestAccessLabel}</a>}
+                  label={requestAccessLabel}
+                />
               </div>
             </div>
           ) : (
             <div className="w-full space-y-7 sm:space-y-10">
-              <h4 className="text-20 font-semibold">{t("workspace_creation.heading")}</h4>
-              <div className="sm:w-3/4 md:w-2/5">
+              <h4 className="text-h4-semibold">{t("workspace_creation.heading")}</h4>
+              <div className="w-full max-w-[24rem]">
                 <CreateWorkspaceForm
                   onSubmit={onSubmit}
                   defaultValues={defaultValues}

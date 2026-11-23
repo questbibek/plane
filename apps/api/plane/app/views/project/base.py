@@ -22,6 +22,7 @@ from plane.app.serializers import (
     ProjectListSerializer,
     ProjectSerializer,
 )
+from plane.app.serializers.favorite import get_favorite_entities
 from plane.app.views.base import BaseAPIView, BaseViewSet
 from plane.bgtasks.recent_visited_task import recent_visited_task
 from plane.bgtasks.webhook_task import model_activity, webhook_activity
@@ -41,6 +42,7 @@ from plane.db.models import (
 )
 from plane.db.models.intake import IntakeIssueStatus
 from plane.utils.host import base_host
+from plane.utils.order_queryset import PROJECT_ORDER_BY_ALLOWLIST, sanitize_order_by
 
 
 class ProjectViewSet(BaseViewSet):
@@ -128,7 +130,11 @@ class ProjectViewSet(BaseViewSet):
 
         if request.GET.get("per_page", False) and request.GET.get("cursor", False):
             return self.paginate(
-                order_by=request.GET.get("order_by", "-created_at"),
+                order_by=sanitize_order_by(
+                    request.GET.get("order_by", "-created_at"),
+                    PROJECT_ORDER_BY_ALLOWLIST,
+                    "-created_at",
+                ),
                 request=request,
                 queryset=(projects),
                 on_results=lambda projects: ProjectListSerializer(projects, many=True).data,
@@ -507,6 +513,9 @@ class ProjectFavoritesViewSet(BaseViewSet):
         serializer.save(user=self.request.user)
 
     def create(self, request, slug):
+        project_id = request.data.get("project")
+        # 404 unless the project is in this workspace and visible to the user
+        get_favorite_entities("project", request.user.id, project_id).get(pk=project_id, workspace__slug=slug)
         _ = UserFavorite.objects.create(
             user=request.user,
             entity_type="project",
@@ -532,6 +541,17 @@ class DeployBoardViewSet(BaseViewSet):
     serializer_class = DeployBoardSerializer
     model = DeployBoard
 
+    def get_queryset(self):
+        # retrieve/partial_update/destroy come from ModelViewSet and resolve the
+        # board through get_object() -> get_queryset(), so limit it to the URL
+        # workspace + project; a board outside that scope returns 404.
+        return DeployBoard.objects.filter(
+            workspace__slug=self.kwargs.get("slug"),
+            entity_name="project",
+            entity_identifier=self.kwargs.get("project_id"),
+            project_id=self.kwargs.get("project_id"),
+        )
+
     def list(self, request, slug, project_id):
         project_deploy_board = DeployBoard.objects.filter(
             entity_name="project", entity_identifier=project_id, workspace__slug=slug
@@ -540,6 +560,9 @@ class DeployBoardViewSet(BaseViewSet):
         serializer = DeployBoardSerializer(project_deploy_board)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # Publishing makes the project's work items public, so publish, update and
+    # unpublish are project-admin actions; reads stay with ProjectMemberPermission.
+    @allow_permission([ROLE.ADMIN])
     def create(self, request, slug, project_id):
         comments = request.data.get("is_comments_enabled", False)
         reactions = request.data.get("is_reactions_enabled", False)
@@ -556,6 +579,16 @@ class DeployBoardViewSet(BaseViewSet):
             },
         )
 
+        # project_id comes from the URL and was never checked against slug, so a
+        # caller could aim their own workspace at another tenant's project id.
+        # Defence in depth: the permission class now binds both.
+        if not Project.objects.filter(pk=project_id, workspace__slug=slug).exists():
+            return Response({"error": "Project does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        # A board can only publish an intake from its own project.
+        if intake and not Intake.objects.filter(pk=intake, project_id=project_id).exists():
+            return Response({"error": "Intake is not valid"}, status=status.HTTP_400_BAD_REQUEST)
+
         project_deploy_board, _ = DeployBoard.objects.get_or_create(
             entity_name="project", entity_identifier=project_id, project_id=project_id
         )
@@ -570,3 +603,11 @@ class DeployBoardViewSet(BaseViewSet):
 
         serializer = DeployBoardSerializer(project_deploy_board)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @allow_permission([ROLE.ADMIN])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @allow_permission([ROLE.ADMIN])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)

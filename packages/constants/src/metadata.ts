@@ -7,8 +7,7 @@
 /* >>> VRIT BRANDING (see BRANDING.md) — product-name surfaces, was "Plane" */
 export const SITE_NAME = "Vrit Tech";
 export const SITE_TITLE = "Vrit Tech";
-export const SITE_DESCRIPTION =
-  "Project management tool to manage work items, cycles, and product roadmaps easily";
+export const SITE_DESCRIPTION = "Project management tool to manage work items, cycles, and product roadmaps easily";
 /* <<< VRIT BRANDING */
 export const SITE_KEYWORDS =
   "software development, plan, ship, software, accelerate, code management, release management, project management, work items tracking, agile, scrum, kanban, collaboration";

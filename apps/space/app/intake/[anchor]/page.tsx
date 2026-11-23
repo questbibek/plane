@@ -9,8 +9,8 @@ import { useParams } from "react-router";
 import useSWR from "swr";
 // plane imports
 import { IntakeService, SitesProjectPublishService } from "@plane/services";
-import { Button } from "@plane/propel/button";
-import { TOAST_TYPE, setToast } from "@plane/propel/toast";
+import { Button } from "@makeplane/propel/components/button";
+import { setToast } from "@plane/blocks/toast";
 // components
 import { LogoSpinner } from "@/components/common/logo-spinner";
 import { PoweredBy } from "@/components/common/powered-by";
@@ -45,7 +45,10 @@ function IntakeFormPage() {
     data: settings,
     isLoading,
     error,
-  } = useSWR(anchor ? `INTAKE_SETTINGS_${anchor}` : null, anchor ? () => publishService.retrieveSettingsByAnchor(anchor) : null);
+  } = useSWR(
+    anchor ? `INTAKE_SETTINGS_${anchor}` : null,
+    anchor ? () => publishService.retrieveSettingsByAnchor(anchor) : null
+  );
 
   if (isLoading) return <LogoSpinner />;
 
@@ -67,7 +70,7 @@ function IntakeFormPage() {
       setIsSubmitted(true);
     } catch {
       setToast({
-        type: TOAST_TYPE.ERROR,
+        type: "error",
         title: "Could not submit",
         message: "Something went wrong. Please try again.",
       });
@@ -78,7 +81,7 @@ function IntakeFormPage() {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-surface-2 px-4 py-10">
-      <div className="w-full max-w-xl rounded-lg border border-subtle bg-surface-1 p-6 shadow-sm">
+      <div className="shadow-sm w-full max-w-xl rounded-lg border border-subtle bg-surface-1 p-6">
         {isSubmitted ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <h2 className="text-lg font-medium text-primary">Thanks for your submission</h2>
@@ -91,9 +94,10 @@ function IntakeFormPage() {
                 setPriority("none");
                 setIsSubmitted(false);
               }}
-            >
-              Submit another
-            </Button>
+              stretch="auto"
+              size="md"
+              label={"Submit another"}
+            />
           </div>
         ) : (
           <>
@@ -101,7 +105,7 @@ function IntakeFormPage() {
               <h1 className="text-lg font-medium text-primary">
                 Submit to {settings.project_details?.name ?? "Intake"}
               </h1>
-              <p className="mt-1 text-sm text-secondary">Tell us what you need. The team will triage it.</p>
+              <p className="text-sm mt-1 text-secondary">Tell us what you need. The team will triage it.</p>
             </div>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -148,9 +152,15 @@ function IntakeFormPage() {
                 </select>
               </div>
               <div className="flex justify-end pt-1">
-                <Button variant="primary" onClick={handleSubmit} loading={isSubmitting} disabled={!name.trim()}>
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSubmit}
+                  loading={isSubmitting}
+                  disabled={!name.trim()}
+                  stretch="auto"
+                  size="md"
+                  label={isSubmitting ? "Submitting..." : "Submit"}
+                />
               </div>
             </div>
           </>

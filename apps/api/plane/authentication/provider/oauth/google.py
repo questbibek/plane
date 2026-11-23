@@ -25,7 +25,7 @@ class GoogleOAuthProvider(OauthAdapter):
     provider = "google"
 
     def __init__(self, request, code=None, state=None, callback=None):
-        (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) = get_configuration_value(
+        (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, IS_GOOGLE_ENABLED) = get_configuration_value(
             [
                 {
                     "key": "GOOGLE_CLIENT_ID",
@@ -35,10 +35,14 @@ class GoogleOAuthProvider(OauthAdapter):
                     "key": "GOOGLE_CLIENT_SECRET",
                     "default": os.environ.get("GOOGLE_CLIENT_SECRET"),
                 },
+                {
+                    "key": "IS_GOOGLE_ENABLED",
+                    "default": os.environ.get("IS_GOOGLE_ENABLED", "0"),
+                },
             ]
         )
 
-        if not (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET):
+        if not (IS_GOOGLE_ENABLED == "1" and GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET):
             raise AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["GOOGLE_NOT_CONFIGURED"],
                 error_message="GOOGLE_NOT_CONFIGURED",
@@ -102,6 +106,14 @@ class GoogleOAuthProvider(OauthAdapter):
 
     def set_user_data(self):
         user_info_response = self.get_user_response()
+        # Reject unverified emails — an attacker-controlled provider could otherwise assert
+        # any email to match an existing account (GHSA-7j95-vh8g-f365). Fail closed: treat
+        # an absent verified_email claim the same as verified_email=false.
+        if user_info_response.get("verified_email") is not True:
+            raise AuthenticationException(
+                error_code=AUTHENTICATION_ERROR_CODES["OAUTH_PROVIDER_UNVERIFIED_EMAIL"],
+                error_message="OAUTH_PROVIDER_UNVERIFIED_EMAIL",
+            )
         user_data = {
             "email": user_info_response.get("email"),
             "user": {

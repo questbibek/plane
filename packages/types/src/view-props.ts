@@ -117,9 +117,7 @@ export const WORK_ITEM_FILTER_PROPERTY_KEYS = [
  */
 export type TCustomFieldFilterProperty = `custom_field_${string}`;
 
-export type TWorkItemFilterProperty =
-  | (typeof WORK_ITEM_FILTER_PROPERTY_KEYS)[number]
-  | TCustomFieldFilterProperty;
+export type TWorkItemFilterProperty = (typeof WORK_ITEM_FILTER_PROPERTY_KEYS)[number] | TCustomFieldFilterProperty;
 
 export type TWorkItemFilterConditionKey = `${TWorkItemFilterProperty}__${TSupportedOperators}`;
 

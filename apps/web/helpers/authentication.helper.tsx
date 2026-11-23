@@ -43,6 +43,7 @@ export enum EAuthenticationErrorCodes {
   EMAIL_REQUIRED = "5010",
   SIGNUP_DISABLED = "5015",
   MAGIC_LINK_LOGIN_DISABLED = "5016",
+  BOT_USER_LOGIN_FORBIDDEN = "5017",
   PASSWORD_LOGIN_DISABLED = "5018",
   USER_ACCOUNT_DEACTIVATED = "5019",
   // Password strength
@@ -108,6 +109,17 @@ export type TAuthErrorInfo = {
   message: ReactNode;
 };
 
+/**
+ * Carries the current page's next_path over to another auth screen, so moving
+ * between sign-in and sign-up keeps the page to return to once signed in
+ * (an invite link, with its token, for one).
+ */
+export const withNextPath = (href: string): string => {
+  const nextPath = new URLSearchParams(window.location.search).get("next_path");
+  if (!nextPath) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}next_path=${encodeURIComponent(nextPath)}`;
+};
+
 // TODO: move all error messages to translation files
 const errorCodeMessages: {
   [key in EAuthenticationErrorCodes]: { title: string; message: (email?: string) => ReactNode };
@@ -141,6 +153,10 @@ const errorCodeMessages: {
     title: `User account deactivated`,
     message: () => `User account deactivated. Please contact ${SUPPORT_EMAIL ? SUPPORT_EMAIL : "administrator"}.`,
   },
+  [EAuthenticationErrorCodes.BOT_USER_LOGIN_FORBIDDEN]: {
+    title: `Sign in not allowed`,
+    message: () => `This account cannot be used to sign in. Please use a personal account.`,
+  },
   [EAuthenticationErrorCodes.INVALID_PASSWORD]: {
     title: `Invalid password`,
     message: () => `Invalid password. Please try again.`,
@@ -162,7 +178,7 @@ const errorCodeMessages: {
         Your account is already registered.&nbsp;
         <Link
           className="font-medium underline underline-offset-4 transition-all hover:font-bold"
-          href={`/sign-in${email ? `?email=${encodeURIComponent(email)}` : ``}`}
+          href={withNextPath(`/sign-in${email ? `?email=${encodeURIComponent(email)}` : ``}`)}
         >
           Sign In
         </Link>
@@ -198,7 +214,7 @@ const errorCodeMessages: {
         No account found.&nbsp;
         <Link
           className="font-medium underline underline-offset-4 transition-all hover:font-bold"
-          href={`/${email ? `?email=${encodeURIComponent(email)}` : ``}`}
+          href={withNextPath(`/${email ? `?email=${encodeURIComponent(email)}` : ``}`)}
         >
           Create one
         </Link>
@@ -380,6 +396,7 @@ export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: s
     EAuthenticationErrorCodes.SIGNUP_DISABLED,
     EAuthenticationErrorCodes.MAGIC_LINK_LOGIN_DISABLED,
     EAuthenticationErrorCodes.PASSWORD_LOGIN_DISABLED,
+    EAuthenticationErrorCodes.BOT_USER_LOGIN_FORBIDDEN,
     EAuthenticationErrorCodes.USER_ACCOUNT_DEACTIVATED,
     EAuthenticationErrorCodes.INVALID_PASSWORD,
     EAuthenticationErrorCodes.SMTP_NOT_CONFIGURED,

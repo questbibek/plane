@@ -57,7 +57,7 @@ git diff --name-only --diff-filter=U    # list conflicts
 | A fenced `VRIT BRANDING` block | Keep **both** upstream's change and the fenced block. |
 | `package.json` / workspace manifests | Keep our added deps **and** take upstream's version bumps. |
 | `pnpm-lock.yaml` | Don't hand-merge: `git checkout --theirs -- pnpm-lock.yaml && pnpm install --lockfile-only`. |
-| Django migrations | Never edit upstream migrations; if our `0122` collides, **renumber ours** to follow upstream's latest and fix its `dependencies`. |
+| Django migrations | Never edit or rename upstream migrations, and **never rename ours** once they are applied in production (Django would try to re-run them). When both sides added migrations, run `python manage.py makemigrations --merge` to add a merge migration (e.g. `0126_merge_*`); it also updates `migrations_lockfile.txt`. |
 
 > After dropping a redundant patch, grep for leftovers it referenced and remove
 > them from **all** files (frontends + `apps/api` + compose/env).
@@ -73,10 +73,10 @@ git grep -n "^<<<<<<<\|^>>>>>>>" | grep -v "\.md:" ; echo "↑ must be empty"
 
 # (c) custom-fields feature intact
 [ -f packages/types/src/custom-fields.ts ] && echo "ok types" || echo "MISSING types"
-[ -f apps/web/core/store/custom-field.store.ts ] && echo "ok store" || echo "MISSING store"
+[ -f apps/web/store/custom-field.store.ts ] && echo "ok store" || echo "MISSING store"
 ls apps/api/plane/db/migrations/0*_customfield_customfieldvalue.py >/dev/null 2>&1 \
   && echo "ok migration" || echo "MISSING migration"
-git grep -q "CustomFieldValuesSection" apps/web/core/components/issues/issue-detail/sidebar.tsx \
+git grep -q "CustomFieldValuesSection" apps/web/components/issues/issue-detail/sidebar-sections.tsx \
   && echo "ok issue-sidebar hook" || echo "MISSING issue-sidebar hook"
 
 # (d) backend checks (run inside the apps/api Python env)

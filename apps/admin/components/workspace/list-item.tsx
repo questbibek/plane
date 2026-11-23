@@ -8,9 +8,10 @@ import { useState } from "react";
 import { observer } from "mobx-react";
 
 // plane internal packages
+import { Tooltip } from "@makeplane/propel/components/tooltip";
+import { WorkspaceAvatar } from "@makeplane/propel/components/workspace-avatar";
+import { NewTabOutline, DeleteOutline } from "@makeplane/propel/icons";
 import { WEB_BASE_URL } from "@plane/constants";
-import { NewTabIcon, TrashIcon } from "@plane/propel/icons";
-import { Tooltip } from "@plane/propel/tooltip";
 import { getFileURL } from "@plane/utils";
 // hooks
 import { useWorkspace } from "@/hooks/store";
@@ -38,35 +39,36 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
         rel="noreferrer"
         className="flex min-w-0 grow items-start gap-4"
       >
-        <span
-          className={`relative mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center p-2 text-11 uppercase ${
-            !workspace?.logo_url && "rounded-lg bg-accent-primary text-on-color"
-          }`}
-        >
-          {workspace?.logo_url && workspace.logo_url !== "" ? (
-            <img
-              src={getFileURL(workspace.logo_url)}
-              className="absolute top-0 left-0 h-full w-full rounded-sm object-cover"
-              alt="Workspace Logo"
-            />
-          ) : (
-            (workspace?.name?.[0] ?? "...")
-          )}
+        <span className="mt-1 flex flex-shrink-0">
+          <WorkspaceAvatar
+            size="lg"
+            src={workspace?.logo_url && workspace.logo_url !== "" ? getFileURL(workspace.logo_url) : undefined}
+            fallback={<span className="uppercase">{workspace?.name?.[0] ?? "..."}</span>}
+          />
         </span>
-        <div className="flex flex-col items-start gap-1">
-          <div className="flex w-full flex-wrap items-center gap-2.5">
-            <h3 className={`text-14 font-medium capitalize`}>{workspace.name}</h3>/
-            <Tooltip tooltipContent="The unique URL of your workspace">
-              <h4 className="text-13 text-tertiary">[{workspace.slug}]</h4>
-            </Tooltip>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2.5">
+            <h3 className="max-w-full truncate text-body-sm-medium capitalize" title={workspace.name}>
+              {workspace.name}
+            </h3>
+            <div className="flex max-w-full min-w-0 items-center gap-2.5">
+              <span className="shrink-0">/</span>
+              <Tooltip label="The unique URL of your workspace">
+                <h4 className="min-w-0 truncate text-body-xs-regular text-tertiary" title={workspace.slug}>
+                  [{workspace.slug}]
+                </h4>
+              </Tooltip>
+            </div>
           </div>
           {workspace.owner.email && (
-            <div className="flex items-center gap-1 text-11">
-              <h3 className="font-medium text-secondary">Owned by:</h3>
-              <h4 className="text-tertiary">{workspace.owner.email}</h4>
+            <div className="flex w-full min-w-0 items-center gap-1 text-caption-sm-regular">
+              <h3 className="shrink-0 font-medium text-secondary">Owned by:</h3>
+              <h4 className="truncate text-tertiary" title={workspace.owner.email}>
+                {workspace.owner.email}
+              </h4>
             </div>
           )}
-          <div className="flex items-center gap-2.5 text-11">
+          <div className="flex flex-wrap items-center gap-2.5 gap-y-1 text-caption-sm-regular">
             {workspace.total_projects !== null && (
               <span className="flex items-center gap-1">
                 <h3 className="font-medium text-secondary">Total projects:</h3>
@@ -74,26 +76,26 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
               </span>
             )}
             {workspace.total_members !== null && (
-              <>
+              <span className="flex items-center gap-2.5">
                 •
                 <span className="flex items-center gap-1">
                   <h3 className="font-medium text-secondary">Total members:</h3>
                   <h4 className="text-tertiary">{workspace.total_members}</h4>
                 </span>
-              </>
+              </span>
             )}
           </div>
         </div>
       </a>
       <div className="flex shrink-0 items-center gap-1">
-        <Tooltip tooltipContent="Delete workspace">
+        <Tooltip label="Delete workspace">
           <button
             type="button"
             aria-label={`Delete workspace ${workspace.name}`}
             onClick={() => setIsDeleteOpen(true)}
             className="grid size-7 place-items-center rounded-sm text-placeholder hover:bg-danger-subtle hover:text-danger-primary"
           >
-            <TrashIcon width={14} height={14} />
+            <DeleteOutline width={14} height={14} />
           </button>
         </Tooltip>
         <a
@@ -103,7 +105,7 @@ export const WorkspaceListItem = observer(function WorkspaceListItem({ workspace
           aria-label={`Open workspace ${workspace.name}`}
           className="grid size-7 place-items-center rounded-sm text-placeholder hover:text-secondary"
         >
-          <NewTabIcon width={14} height={16} />
+          <NewTabOutline width={14} height={16} />
         </a>
       </div>
       <DeleteWorkspaceModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} workspace={workspace} />

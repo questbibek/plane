@@ -9,7 +9,7 @@ import useSWR from "swr";
 import { GROUP_CHOICES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import type { IUserStateDistribution, TStateGroups } from "@plane/types";
-import { ContentWrapper } from "@plane/ui";
+import { ContentWrapper } from "@plane/blocks/layout";
 // components
 import { PageHead } from "@/components/core/page-title";
 import { ProfileActivity } from "@/components/profile/overview/activity";
@@ -18,7 +18,7 @@ import { ProfileStateDistribution } from "@/components/profile/overview/state-di
 import { ProfileStats } from "@/components/profile/overview/stats";
 import { ProfileWorkload } from "@/components/profile/overview/workload";
 // constants
-import { USER_PROFILE_DATA } from "@/constants/fetch-keys";
+import { USER_PROFILE_DATA } from "@plane/constants";
 // services
 import { UserService } from "@/services/user.service";
 import type { Route } from "./+types/page";

@@ -31,7 +31,7 @@ class GitHubOAuthProvider(OauthAdapter):
     organization_scope = "read:org"
 
     def __init__(self, request, code=None, state=None, callback=None):
-        GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_ORGANIZATION_ID = get_configuration_value([
+        GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_ORGANIZATION_ID, IS_GITHUB_ENABLED = get_configuration_value([
             {
                 "key": "GITHUB_CLIENT_ID",
                 "default": os.environ.get("GITHUB_CLIENT_ID"),
@@ -44,9 +44,13 @@ class GitHubOAuthProvider(OauthAdapter):
                 "key": "GITHUB_ORGANIZATION_ID",
                 "default": os.environ.get("GITHUB_ORGANIZATION_ID"),
             },
+            {
+                "key": "IS_GITHUB_ENABLED",
+                "default": os.environ.get("IS_GITHUB_ENABLED", "0"),
+            },
         ])
 
-        if not (GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET):
+        if not (IS_GITHUB_ENABLED == "1" and GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET):
             raise AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["GITHUB_NOT_CONFIGURED"],
                 error_message="GITHUB_NOT_CONFIGURED",
@@ -117,12 +121,17 @@ class GitHubOAuthProvider(OauthAdapter):
                     error_code=AUTHENTICATION_ERROR_CODES["GITHUB_OAUTH_PROVIDER_ERROR"],
                     error_message="GITHUB_OAUTH_PROVIDER_ERROR",
                 )
-            email = next((email["email"] for email in emails_response if email["primary"]), None)
+            # Require both primary AND verified — an unverified primary email can be
+            # exploited to take over an existing account (GHSA-7j95-vh8g-f365).
+            email = next(
+                (e["email"] for e in emails_response if e.get("primary") and e.get("verified")),
+                None,
+            )
             if not email:
-                self.logger.error("No primary email found for user")
+                self.logger.error("No primary verified email found for GitHub user")
                 raise AuthenticationException(
-                    error_code=AUTHENTICATION_ERROR_CODES["GITHUB_OAUTH_PROVIDER_ERROR"],
-                    error_message="GITHUB_OAUTH_PROVIDER_ERROR",
+                    error_code=AUTHENTICATION_ERROR_CODES["OAUTH_PROVIDER_UNVERIFIED_EMAIL"],
+                    error_message="OAUTH_PROVIDER_UNVERIFIED_EMAIL",
                 )
             return email
         except requests.RequestException:
@@ -151,13 +160,9 @@ class GitHubOAuthProvider(OauthAdapter):
 
         if self.organization_id:
             if not self.is_user_in_organization(user_info_response.get("login")):
-                self.logger.warning(
-                    "User is not in organization",
-                    extra={
-                        "organization_id": self.organization_id,
-                        "user_login": user_info_response.get("login"),
-                    },
-                )
+                # Do not log the organization id or user login here:
+                # the configuration values must not end up in logs
+                self.logger.warning("User is not in organization")
                 raise AuthenticationException(
                     error_code=AUTHENTICATION_ERROR_CODES["GITHUB_USER_NOT_IN_ORG"],
                     error_message="GITHUB_USER_NOT_IN_ORG",

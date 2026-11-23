@@ -13,6 +13,7 @@ from plane.app.views import (
     PageDuplicateEndpoint,
     PageFolderViewSet,
     PageTagEndpoint,
+    PageLiveAccessEndpoint,
 )
 
 urlpatterns = [
@@ -89,5 +90,11 @@ urlpatterns = [
         "workspaces/<str:slug>/projects/<uuid:project_id>/pages/<uuid:page_id>/duplicate/",
         PageDuplicateEndpoint.as_view(),
         name="page-duplicate",
+    ),
+    # live server per-connection access check
+    path(
+        "workspaces/<str:slug>/pages/<uuid:page_id>/live-access/",
+        PageLiveAccessEndpoint.as_view(),
+        name="page-live-access",
     ),
 ]

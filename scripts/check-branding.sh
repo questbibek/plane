@@ -30,17 +30,16 @@ for app in web admin space; do
 done
 
 echo "== Brand component =="
-check_contains "apps/web/core/components/branding/VritBrand.tsx" "VritLogo"      "VritBrand exports VritLogo"
-check_contains "apps/web/core/components/branding/VritBrand.tsx" "VritPoweredBy" "VritBrand exports VritPoweredBy"
-check_contains "apps/web/core/components/branding/VritBrand.tsx" "vrittechnologies.com" "VritBrand links vrittechnologies.com"
+check_contains "apps/web/components/branding/VritBrand.tsx" "VritLogo"      "VritBrand exports VritLogo"
+check_contains "apps/web/components/branding/VritBrand.tsx" "VritPoweredBy" "VritBrand exports VritPoweredBy"
+check_contains "apps/web/components/branding/VritBrand.tsx" "vrittechnologies.com" "VritBrand links vrittechnologies.com"
 
 echo "== Auth hooks (web) =="
-check_contains "apps/web/core/components/auth-screens/header.tsx" "VritLogo"      "auth header renders VritLogo"
-check_contains "apps/web/core/components/auth-screens/footer.tsx" "VritPoweredBy" "auth footer renders VritPoweredBy"
+check_contains "apps/web/components/auth-screens/header.tsx" "VritLogo"      "auth header renders VritLogo"
+check_contains "apps/web/components/auth-screens/footer.tsx" "VritPoweredBy" "auth footer renders VritPoweredBy"
 
 echo "== Favicons =="
 check_contains "apps/web/app/root.tsx"     "/vrit-fav.png" "web root.tsx favicon"
-check_contains "apps/web/app/layout.tsx"   "/vrit-fav.png" "web layout.tsx favicon"
 check_contains "apps/admin/app/root.tsx"   "/vrit-fav.png" "admin root.tsx favicon"
 check_contains "apps/space/app/root.tsx"   "/vrit-fav.png" "space root.tsx favicon"
 

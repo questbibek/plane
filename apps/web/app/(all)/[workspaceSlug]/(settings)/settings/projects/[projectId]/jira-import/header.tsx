@@ -7,7 +7,7 @@
 import { observer } from "mobx-react";
 import { Upload } from "lucide-react";
 // plane imports
-import { Breadcrumbs } from "@plane/ui";
+import { Breadcrumbs } from "@plane/blocks/breadcrumb";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { SettingsPageHeader } from "@/components/settings/page-header";
