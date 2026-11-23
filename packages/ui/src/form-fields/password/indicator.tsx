@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, CircleX } from "lucide-react";
 import React from "react";
 import { E_PASSWORD_STRENGTH } from "@plane/constants";
 import { cn, getPasswordStrength, getPasswordCriteria } from "@plane/utils";
@@ -25,7 +25,7 @@ export function PasswordStrengthIndicator({
   const criteria = getPasswordCriteria(password);
   const strengthInfo = getStrengthInfo(strength);
 
-  const isPasswordMeterVisible = isFocused ? true : strength === E_PASSWORD_STRENGTH.STRENGTH_VALID ? false : true;
+  const isPasswordMeterVisible = isFocused || strength !== E_PASSWORD_STRENGTH.STRENGTH_VALID;
 
   if ((!password && !showCriteria) || !isPasswordMeterVisible) {
     return null;
@@ -57,17 +57,17 @@ export function PasswordStrengthIndicator({
           {criteria.map((criterion) => (
             <div key={criterion.key} className="flex items-center gap-1.5">
               <div className="flex items-center justify-center p-0.5">
-                <CircleCheck
-                  className={cn("h-3 w-3 flex-shrink-0", {
-                    "text-success-primary": criterion.isValid,
-                    "text-primary": !criterion.isValid,
-                  })}
-                />
+                {/* a tick on an unmet rule read as "done"; show a cross so the missing rule stands out */}
+                {criterion.isValid ? (
+                  <CircleCheck className="h-3 w-3 flex-shrink-0 text-success-primary" />
+                ) : (
+                  <CircleX className="h-3 w-3 flex-shrink-0 text-danger-primary" />
+                )}
               </div>
               <span
                 className={cn("!text-11", {
                   "text-success-primary": criterion.isValid,
-                  "text-primary": !criterion.isValid,
+                  "text-danger-primary": !criterion.isValid,
                 })}
               >
                 {criterion.label}

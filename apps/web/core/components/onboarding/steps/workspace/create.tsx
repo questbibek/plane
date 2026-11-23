@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
+import { mutate } from "swr";
 import { CircleCheck } from "lucide-react";
 // plane imports
 import { ORGANIZATION_SIZE, RESTRICTED_URLS } from "@plane/constants";
@@ -43,6 +44,8 @@ export const WorkspaceCreateStep = observer(function WorkspaceCreateStep({
   // states
   const [slugError, setSlugError] = useState(false);
   const [invalidSlug, setInvalidSlug] = useState(false);
+  const [isCheckingInvites, setIsCheckingInvites] = useState(false);
+  const [hasCheckedInvites, setHasCheckedInvites] = useState(false);
   // plane hooks
   const { t } = useTranslation();
   // store hooks
@@ -114,14 +117,48 @@ export const WorkspaceCreateStep = observer(function WorkspaceCreateStep({
 
   const isButtonDisabled = !isValid || invalidSlug || isSubmitting;
 
+  // invites can arrive while this screen is open; look again without making people reload
+  const handleCheckForInvites = async () => {
+    setIsCheckingInvites(true);
+    try {
+      const [workspaces] = await Promise.all([
+        fetchWorkspaces(),
+        mutate(`USER_WORKSPACE_INVITATIONS_LIST_${user?.id}`),
+      ]);
+      // added to a workspace directly (or joined through an email link): nothing left to set up
+      if (workspaces.length > 0) {
+        onComplete(true);
+        return;
+      }
+      setHasCheckedInvites(true);
+    } finally {
+      setIsCheckingInvites(false);
+    }
+  };
+
   if (isWorkspaceCreationDisabled) {
     return (
-      <div className="flex flex-col gap-10">
-        <span className="text-center text-14 text-tertiary">
-          You don&apos;t seem to have any invites to a workspace and your instance admin has restricted creation of new
-          workspaces. Please ask a workspace owner or admin to invite you to a workspace first and come back to this
-          screen to join.
-        </span>
+      <div className="flex flex-col gap-6 text-center">
+        <CommonOnboardingHeader title="Waiting for an invite" description="You need an invite to join a workspace." />
+        <p className="text-14 text-tertiary">
+          Workspace creation is turned off on this instance. Ask a workspace admin to invite{" "}
+          <span className="font-medium text-primary">{user?.email}</span> — invites are matched to this email, so an
+          invite sent to a different address won&apos;t show up here.
+        </p>
+        <Button
+          variant="primary"
+          size="xl"
+          className="w-full"
+          onClick={() => void handleCheckForInvites()}
+          loading={isCheckingInvites}
+        >
+          Check for invites
+        </Button>
+        {hasCheckedInvites && !isCheckingInvites && (
+          <p className="text-13 text-tertiary">
+            No invites for this email yet. Try again once you&apos;ve been invited.
+          </p>
+        )}
       </div>
     );
   }

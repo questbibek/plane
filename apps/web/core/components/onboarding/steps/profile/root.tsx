@@ -14,7 +14,7 @@ import { Button } from "@plane/propel/button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IUser } from "@plane/types";
 import { EOnboardingSteps } from "@plane/types";
-import { cn, getFileURL, getPasswordStrength, validatePersonName } from "@plane/utils";
+import { cn, getFileURL, getPasswordCriteria, getPasswordStrength, validatePersonName } from "@plane/utils";
 // components
 import { UserImageUploadModal } from "@/components/core/modals/user-image-upload-modal";
 // hooks
@@ -139,10 +139,21 @@ export const ProfileSetupStep = observer(function ProfileSetupStep({ handleStepC
     }
   }, [currentPassword, currentConfirmPassword]);
 
+  // say why Continue is disabled when a typed password is the reason, since the password itself is optional
+  const passwordBlocker = useMemo(() => {
+    if (isPasswordAlreadySetup || !currentPassword || isValidPassword) return null;
+    const missing = getPasswordCriteria(currentPassword)
+      .filter((criterion) => !criterion.isValid)
+      .map((criterion) => criterion.label.replace(/^min /i, "").toLowerCase());
+    if (missing.length > 0)
+      return `Your password still needs: ${missing.join(", ")}. Or clear it — setting a password is optional.`;
+    if (currentPassword !== currentConfirmPassword) return "The passwords don't match yet.";
+    return null;
+  }, [isPasswordAlreadySetup, currentPassword, currentConfirmPassword, isValidPassword]);
+
   // Check for all available fields validation and if password field is available, then checks for password validation (strength + confirmation).
   // Also handles the condition for optional password i.e if password field is optional it only checks for above validation if it's not empty.
-  const isButtonDisabled =
-    !isSubmitting && isValid ? (isPasswordAlreadySetup ? false : isValidPassword ? false : true) : true;
+  const isButtonDisabled = !(!isSubmitting && isValid && (isPasswordAlreadySetup || isValidPassword));
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-10">
@@ -175,7 +186,6 @@ export const ProfileSetupStep = observer(function ProfileSetupStep({ handleStepC
           {userAvatar ? (
             <img
               src={getFileURL(userAvatar ?? "")}
-              onClick={() => setIsImageUploadModalOpen(true)}
               alt={user?.display_name}
               className="h-full w-full rounded-full object-cover"
             />
@@ -222,6 +232,8 @@ export const ProfileSetupStep = observer(function ProfileSetupStep({ handleStepC
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                // the name is the only required field on this step, so start there
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 className={cn(
                   "w-full rounded-md border border-strong bg-surface-1 px-3 py-2 text-secondary transition-all duration-200 placeholder:text-placeholder focus:border-transparent focus:ring-2 focus:ring-accent-strong focus:outline-none",
@@ -247,9 +259,12 @@ export const ProfileSetupStep = observer(function ProfileSetupStep({ handleStepC
         )}
       </div>
       {/* Continue Button */}
-      <Button variant="primary" type="submit" className="w-full" size="xl" disabled={isButtonDisabled}>
-        Continue
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button variant="primary" type="submit" className="w-full" size="xl" disabled={isButtonDisabled}>
+          Continue
+        </Button>
+        {passwordBlocker && <p className="text-center text-13 text-danger-primary">{passwordBlocker}</p>}
+      </div>
 
       {/* Marketing Consent */}
       {!instanceConfig?.is_self_managed && (
