@@ -97,6 +97,13 @@ moves; grep if it has shifted.**
 - [x] `apps/admin/app/root.tsx`, `apps/space/app/root.tsx` — `APP_TITLE`
   (+ space `APP_DESCRIPTION`) → "Vrit Tech".
 
+### 5b. Upstream promo removed  ✅
+- [x] `apps/web/components/navigation/top-navigation-root.tsx` — no
+  `<StarUsOnGitHubLink />` in the top bar (fenced comment marks the spot).
+- [x] `apps/web/app/(all)/workspace-invitations/page.tsx` — no
+  "Star us on GitHub" button on the inactive-invite screen.
+- `check-branding.sh` fails if a merge brings either back.
+
 ### 6. Intentionally skipped
 - [ ] `logo-spinner.tsx`: left as Plane's animated GIF (optional, low value).
 - [ ] Sidebar: Plane's sidebar top is the **workspace switcher** (shows the

@@ -20,8 +20,7 @@ import { IconButton } from "@makeplane/propel/elements/icon-button";
 import { InboxOutline } from "@makeplane/propel/icons";
 import useSWR from "swr";
 import { useWorkspaceNotifications } from "@/hooks/store/notifications";
-// local imports
-import { StarUsOnGitHubLink } from "@/app/(all)/[workspaceSlug]/(projects)/star-us-link";
+// VRIT BRANDING — upstream's "Star us on GitHub" link removed from the top navigation
 
 export const TopNavigationRoot = observer(function TopNavigationRoot() {
   const { t } = useTranslation();
@@ -92,7 +91,6 @@ export const TopNavigationRoot = observer(function TopNavigationRoot() {
           </IconButton>
         </Tooltip>
         <HelpMenuRoot />
-        <StarUsOnGitHubLink />
         <UserMenuRoot />
       </div>
     </div>

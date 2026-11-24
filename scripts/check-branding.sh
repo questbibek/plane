@@ -46,6 +46,14 @@ check_contains "apps/space/app/root.tsx"   "/vrit-fav.png" "space root.tsx favic
 echo "== Product name =="
 check_contains "packages/constants/src/metadata.ts" "Vrit Tech" "metadata.ts SITE_NAME = Vrit Tech"
 
+echo "== Upstream promo removed =="
+# a merge that brings these back re-adds Plane's "Star us on GitHub" promo
+check_absent() { # <file> <needle> <label>
+  if [ -f "$1" ] && grep -qF -- "$2" "$1"; then miss "$3 — '$2' is back in $1"; else ok "$3"; fi
+}
+check_absent "apps/web/components/navigation/top-navigation-root.tsx" "StarUsOnGitHubLink" "no Star-us link in top navigation"
+check_absent "apps/web/app/(all)/workspace-invitations/page.tsx" "github.com/makeplane" "no Star-us button on invitation page"
+
 echo
 if [ "$fail" -eq 0 ]; then
   printf '\033[32mBranding intact.\033[0m\n'

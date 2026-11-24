@@ -12,6 +12,7 @@ import useSWR from "swr";
 import { AnchorButton } from "@makeplane/propel/components/anchor-button";
 import { Button } from "@makeplane/propel/components/button";
 import { EmptyStateDetailed } from "@plane/blocks/empty-state";
+import { setToast } from "@plane/blocks/toast";
 // components
 import { LogoSpinner } from "@/components/common/logo-spinner";
 // constants
@@ -29,6 +30,12 @@ import { WorkspaceService } from "@/services/workspace.service";
 // service initialization
 const workspaceService = new WorkspaceService();
 
+// sign-in page that comes back to this invite afterwards
+const signInHref = () => {
+  const here = `${window.location.pathname}${window.location.search}`;
+  return `/?next_path=${encodeURIComponent(here)}`;
+};
+
 function WorkspaceInvitationPage() {
   // router
   const router = useAppRouter();
@@ -38,7 +45,7 @@ function WorkspaceInvitationPage() {
   const slug = searchParams.get("slug");
   const token = searchParams.get("token");
   // store hooks
-  const { data: currentUser } = useUser();
+  const { data: currentUser, signOut } = useUser();
 
   const { data: invitationDetail, error } = useSWR(
     invitation_id && slug && WORKSPACE_INVITATION(invitation_id.toString()),
@@ -47,34 +54,49 @@ function WorkspaceInvitationPage() {
       : null
   );
 
-  const handleAccept = () => {
-    if (!invitationDetail) return;
-    workspaceService
-      .joinWorkspace(invitationDetail.workspace.slug, invitationDetail.id, {
-        accepted: true,
-        token: token,
-      })
-      .then(() => {
-        if (invitationDetail.email === currentUser?.email) {
-          router.push(`/${invitationDetail.workspace.slug}`);
-        } else {
-          router.push("/");
-        }
-      })
-      .catch((err: unknown) => console.error(err));
+  // the server only lets the invited person accept (a security check), so tell anyone else what to do
+  // instead of showing an Accept button that fails silently
+  const invitedEmail = invitationDetail?.email ?? "";
+  const isWrongAccount = !!currentUser && currentUser.email.toLowerCase() !== invitedEmail.toLowerCase();
+
+  const showJoinError = (err: unknown) => {
+    const message = (err as { error?: string } | undefined)?.error;
+    setToast({ type: "error", title: "Error!", message: message ?? "Something went wrong. Please try again." });
   };
 
-  const handleReject = () => {
+  const handleSwitchAccount = async () => {
+    try {
+      await signOut();
+    } finally {
+      // a full load so the sign-in page starts without the previous account's state
+      window.location.href = signInHref();
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!invitationDetail) return;
+    try {
+      await workspaceService.joinWorkspace(invitationDetail.workspace.slug, invitationDetail.id, {
+        accepted: true,
+        token: token,
+      });
+      router.push(invitationDetail.email === currentUser?.email ? `/${invitationDetail.workspace.slug}` : "/");
+    } catch (err) {
+      showJoinError(err);
+    }
+  };
+
+  const handleReject = async () => {
     if (!invitationDetail || !token) return;
-    void workspaceService
-      .joinWorkspace(invitationDetail.workspace.slug, invitationDetail.id, {
+    try {
+      await workspaceService.joinWorkspace(invitationDetail.workspace.slug, invitationDetail.id, {
         accepted: false,
         token: token,
-      })
-      .then(() => {
-        router.push("/");
-      })
-      .catch((err: unknown) => console.error(err));
+      });
+      router.push("/");
+    } catch (err) {
+      showJoinError(err);
+    }
   };
 
   return (
@@ -93,11 +115,23 @@ function WorkspaceInvitationPage() {
               align="center"
               assetKey="inbox"
               title={`You have been invited to ${invitationDetail.workspace.name}`}
-              description="Your workspace is where you'll create projects, collaborate on your work items, and organize different streams of work in your Plane account."
-              actions={[
-                { label: "Accept", variant: "primary", onClick: handleAccept },
-                { label: "Ignore", variant: "secondary", onClick: handleReject },
-              ]}
+              description={
+                !currentUser
+                  ? `This invitation was sent to ${invitedEmail}. Sign in with that email to accept it.`
+                  : isWrongAccount
+                    ? `This invitation was sent to ${invitedEmail}, but you are signed in as ${currentUser.email}. Sign in as ${invitedEmail} to accept it.`
+                    : "Your workspace is where you'll create projects, collaborate on your work items, and organize different streams of work in your Plane account."
+              }
+              actions={
+                !currentUser
+                  ? [{ label: "Sign in to accept", variant: "primary", onClick: () => router.push(signInHref()) }]
+                  : isWrongAccount
+                    ? [{ label: "Switch account", variant: "primary", onClick: () => void handleSwitchAccount() }]
+                    : [
+                        { label: "Accept", variant: "primary", onClick: () => void handleAccept() },
+                        { label: "Ignore", variant: "secondary", onClick: () => void handleReject() },
+                      ]
+              }
             />
           )
         ) : error || invitationDetail?.responded_at ? (
@@ -135,13 +169,7 @@ function WorkspaceInvitationPage() {
                     render={<Link href="/" />}
                   />
                   <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-                    <AnchorButton
-                      variant="secondary"
-                      size="md"
-                      href="https://github.com/makeplane"
-                      external
-                      label="Star us on GitHub"
-                    />
+                    {/* VRIT BRANDING — upstream's "Star us on GitHub" button removed */}
                     <AnchorButton
                       variant="secondary"
                       size="md"
